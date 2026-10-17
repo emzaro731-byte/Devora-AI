@@ -214,6 +214,9 @@ body{background:radial-gradient(ellipse at 50% -25%,#123d75 0,transparent 45%),r
 .studio-voice-btn.recording{background:#4b1724;border-color:#ff617e;color:#fff}
 .studio-voice-help{font-size:11px;color:#8399b8;flex:1;min-width:140px}
 
+
+.media-credit-panel{display:flex;align-items:center;gap:14px;margin:12px 0 4px;padding:13px 15px;border:1px solid rgba(16,163,127,.35);border-radius:15px;background:linear-gradient(120deg,rgba(16,163,127,.12),rgba(255,255,255,.025))}
+.media-credit-panel>div{display:flex;flex-direction:column;gap:2px;min-width:0}.media-credit-panel>div:first-child{flex:1}.credit-label{font-size:10px;letter-spacing:.11em;color:var(--muted);font-weight:750}.media-credit-panel strong{font-size:17px;line-height:1.35}.credit-cost-wrap{padding-left:13px;border-left:1px solid var(--line)}.credit-refresh{border:1px solid var(--line);background:#ffffff08;border-radius:10px;width:34px;height:34px;font-size:19px}.credit-note{margin:0 0 10px;color:var(--muted);font-size:11px;line-height:1.45}@media(max-width:520px){.media-credit-panel{gap:9px;padding:11px}.media-credit-panel strong{font-size:15px}.credit-label{font-size:9px}.credit-cost-wrap{padding-left:9px}}
 .studio-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}
 .studio-option-field{min-width:0}
 .studio-select{width:100%;background:#080e19;color:#eaf3ff;border:1px solid #2d405e;border-radius:12px;padding:12px 11px;font:13px system-ui,sans-serif;outline:none}
@@ -512,8 +515,14 @@ body:after{width:260px;height:260px;right:-160px;bottom:8%;background:#31d8ff}
   <div class="studio-option-field model-picker-field">
    <label class="studio-option-heading" for="studioModel">AI model</label>
    <select class="studio-select" id="studioModel" aria-label="Choose KIE AI model"></select>
-   <p class="studio-option-note" id="studioModelNote">Choose the generation model. Availability and credits depend on your KIE.ai account.</p>
+   <p class="studio-option-note" id="studioModelNote">Choose a model for your creation.</p>
   </div>
+  <div class="media-credit-panel" id="mediaCreditPanel" aria-live="polite">
+   <div><span class="credit-label">YOUR DEVORA CREDITS</span><strong id="mediaCreditBalance">Sign in to view</strong></div>
+   <div class="credit-cost-wrap"><span class="credit-label">THIS GENERATION</span><strong id="mediaCreditCost">— credits</strong></div>
+   <button type="button" class="credit-refresh" id="mediaCreditRefresh" aria-label="Refresh credit balance">↻</button>
+  </div>
+  <p class="credit-note">New accounts receive 100 welcome credits once. Credits are charged when a task starts and refunded if generation fails.</p>
   <div class="studio-options" id="visualOptions">
    <div class="studio-option-field">
     <label class="studio-option-heading" for="studioStyle">Visual style</label>
@@ -592,7 +601,7 @@ function addMessage(role,text){const row=document.createElement('div');row.class
 function setBusy(v){busy=v;$('#send').disabled=v;input.disabled=v}
 function openAuth(mode='signin'){authMode=mode;$('#authTitle').textContent=mode==='signup'?'Create your Devora-AI account':'Sign in to Devora-AI';$('#authSubmit').textContent=mode==='signup'?'Create account':'Sign in';$('#authSwitch').textContent=mode==='signup'?'Already have an account? Sign in':'Create an account';$('#authPassword').autocomplete=mode==='signup'?'new-password':'current-password';$('#authMessage').textContent='';$('#authModal').classList.remove('hidden')}
 function closeAuth(){if(!currentUser){document.body.classList.add('auth-required');$('#authModal').classList.remove('hidden');return}document.body.classList.remove('auth-required');$('#authModal').classList.add('hidden')}
-async function refreshAccount(){const {data}=await db.auth.getSession();currentUser=data.session?.user||null;$('#accountBtn').textContent=currentUser?'Sign out':'Sign in';$('#profileName').textContent=currentUser?(currentUser.user_metadata?.full_name||currentUser.email.split('@')[0]):'Devora-AI';$('#profileStatus').textContent=currentUser?currentUser.email:'AI assistant';if(currentUser){document.body.classList.remove('auth-required');$('#authModal').classList.add('hidden')}else{document.body.classList.add('auth-required');$('#authModal').classList.remove('hidden')}await loadHistory()}
+async function refreshAccount(){const {data}=await db.auth.getSession();currentUser=data.session?.user||null;$('#accountBtn').textContent=currentUser?'Sign out':'Sign in';$('#profileName').textContent=currentUser?(currentUser.user_metadata?.full_name||currentUser.email.split('@')[0]):'Devora-AI';$('#profileStatus').textContent=currentUser?currentUser.email:'AI assistant';if(currentUser){document.body.classList.remove('auth-required');$('#authModal').classList.add('hidden')}else{document.body.classList.add('auth-required');$('#authModal').classList.remove('hidden')}await loadHistory();await refreshMediaCredits()}
 async function loadHistory(){const host=$('#history');host.innerHTML='';if(!currentUser){host.textContent='Sign in to sync your chats.';return}const {data,error}=await db.from('devora_conversations').select('id,title,updated_at').order('updated_at',{ascending:false}).limit(20);if(error){host.textContent='Could not load chat history.';return}if(!data.length){host.textContent='Your saved chats will appear here.';return}const list=document.createElement('div');list.className='history-list';data.forEach(item=>{const b=document.createElement('button');b.className='history-row';b.textContent=item.title||'New Chat';b.title=b.textContent;b.onclick=()=>openConversation(item.id);list.append(b)});host.append(list)}
 async function persistConversation(){if(!currentUser||!messages.length)return;const title=(messages.find(m=>m.role==='user')?.content||'New Chat').slice(0,70);const payload={user_id:currentUser.id,title,messages,updated_at:new Date().toISOString()};let result;if(conversationId){result=await db.from('devora_conversations').update(payload).eq('id',conversationId).select('id').single()}else{result=await db.from('devora_conversations').insert(payload).select('id').single();if(!result.error)conversationId=result.data.id}if(result.error)console.warn('Could not save Devora chat:',result.error.message);else await loadHistory()}
 async function openConversation(id){const {data,error}=await db.from('devora_conversations').select('id,title,messages').eq('id',id).single();if(error){alert('Could not open this conversation.');return}conversationId=data.id;messages=Array.isArray(data.messages)?data.messages:[];messagesEl.innerHTML='';showChat();messages.forEach(m=>addMessage(m.role,m.content));$('#sidebar').classList.remove('open')}
@@ -639,6 +648,21 @@ const DEVORA_KIE_MODELS = {
   {id:'V6_WILD',name:'Suno V6 Wild · Experimental'}
  ]
 };
+
+const DEVORA_CREDIT_COSTS = {'gpt-image-2-text-to-image':5,'nano-banana-2-1':6,'nano-banana-2':6,'nano-banana-pro':10,'grok-imagine-image-2-0/text-to-image':5,'grok-imagine/text-to-image':4,'bytedance/seedream-v4-text-to-image':5,'flux-2/pro-text-to-image':7,'flux-2/flex-text-to-image':5,'qwen2-1/text-to-image':4,'bytedance/seedance-2-5':25,'veo-3-1':50,'kling-3.0/video':25,'grok-imagine-video-1-5-preview':15,'V6':10,'V6_MINI':7,'V6_WILD':12};
+let mediaCreditBalance = null;
+function selectedMediaCreditCost(){return DEVORA_CREDIT_COSTS[$('#studioModel')?.value]||0}
+function updateMediaCreditCost(){const cost=selectedMediaCreditCost();const label=$('#mediaCreditCost');if(label)label.textContent=cost?cost+' credits':'— credits'}
+function setMediaCreditBalance(value){if(value===null||value===undefined)return;mediaCreditBalance=Number(value);const label=$('#mediaCreditBalance');if(label)label.textContent=mediaCreditBalance+' credits'}
+async function refreshMediaCredits(){
+ const label=$('#mediaCreditBalance');if(!label)return;
+ if(!currentUser){mediaCreditBalance=null;label.textContent='Sign in to view';updateMediaCreditCost();return}
+ label.textContent='Loading…';
+ try{const {data:sd}=await db.auth.getSession();const session=sd?.session;if(!session){mediaCreditBalance=null;label.textContent='Sign in to view';return}
+ const response=await fetch(SUPABASE_URL+'/functions/v1/devora-media',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+session.access_token},body:JSON.stringify({action:'credits'})});
+ const data=await response.json();if(!response.ok||data.error)throw new Error(data.error||'Unable to load credits');setMediaCreditBalance(data.balance)
+ }catch(e){label.textContent='Unavailable';console.warn('Could not load Devora credits:',e.message)}updateMediaCreditCost()
+}
 function populateKieModels(mode, preferred){
  const select=$('#studioModel'); if(!select)return;
  const list=DEVORA_KIE_MODELS[mode]||[];
@@ -647,6 +671,7 @@ function populateKieModels(mode, preferred){
  if(preferred&&list.some(item=>item.id===preferred))select.value=preferred;
  const notes={image:'Image models can have different editing, size, and reference-image requirements.',video:'Video models differ in duration, quality, audio, and reference-media support.',music:'Suno versions create full tracks; generation uses KIE.ai credits.'};
  $('#studioModelNote').textContent=notes[mode]||'Choose a model.';
+ updateMediaCreditCost();
 }
 async function generateMedia(){
   const inStudio=studioOpen;
@@ -665,6 +690,7 @@ async function generateMedia(){
   if(sessionError||!session){status.textContent='Please sign in first to generate media.';openAuth();return}
   button.disabled=true;result.innerHTML='';status.textContent='Sending request to KIE.ai…';
   try{
+    const requestId=crypto.randomUUID();
     const call=async body=>{
       const response=await fetch(SUPABASE_URL+'/functions/v1/devora-media',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+session.access_token},body:JSON.stringify(body)});
       const data=await response.json().catch(()=>({error:'Invalid response from media service.'}));
@@ -677,14 +703,16 @@ async function generateMedia(){
     const uploadedFiles=[];
     for(const file of selectedFiles){if(file.type.startsWith('image/')||file.type.startsWith('audio/')||file.type.startsWith('video/'))uploadedFiles.push(await readFileData(file));else if(/\.(txt|md|csv|json)$/i.test(file.name))uploadedFiles.push({name:file.name,type:file.type||'text/plain',content:(await fileToText(file)).slice(0,30000)});else uploadedFiles.push({name:file.name,type:file.type||'application/octet-stream',size:file.size});}
     const chosenModel=$('#studioModel')?.value||'';
-    const task=await call({type,model:chosenModel,prompt:enhancedPrompt,style:visualStyle,aspectRatio:aspectRatio,aspect_ratio:aspectRatio,files:uploadedFiles,attachments:uploadedFiles});
-    status.textContent='Generation queued. Waiting for KIE.ai…';
+    const task=await call({type,model:chosenModel,requestId,prompt:enhancedPrompt,style:visualStyle,aspectRatio:aspectRatio,aspect_ratio:aspectRatio,files:uploadedFiles,attachments:uploadedFiles});
+    setMediaCreditBalance(task.balance);
+    status.textContent='Generation queued. Charged '+task.creditCost+' credits. Waiting for KIE.ai…';
     let finalData=null;
     for(let i=0;i<90;i++){
       await new Promise(resolve=>setTimeout(resolve,3000));
-      const check=await call({action:'status',taskId:task.taskId});
+      const check=await call({action:'status',taskId:task.taskId,requestId});
+      if(check.balance!==null&&check.balance!==undefined)setMediaCreditBalance(check.balance);
       if(check.state==='success'){finalData=check;break}
-      if(check.state==='fail'){throw new Error(check.failMsg||'KIE.ai could not generate this media.')}
+      if(check.state==='fail'||check.state==='failed'){await refreshMediaCredits();throw new Error((check.failMsg||'KIE.ai could not generate this media.')+' Your credits have been refunded.')}
       status.textContent='Generating '+type+'… '+(check.progress!=null?check.progress+'%':'Please wait')+' ('+(i+1)+' checks)';
     }
     if(!finalData)throw new Error('This generation is taking longer than expected. Your task ID is '+task.taskId+'. Try again later.');
@@ -696,7 +724,7 @@ async function generateMedia(){
     const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener';link.textContent='Open or download generated '+type;link.style.display='inline-block';link.style.marginTop='8px';result.append(link);
     status.textContent='Your '+type+' is ready.';
     if(inStudio){studioFiles=[];renderFileChips($('#studioAttachments'),studioFiles,()=>studioFiles,'studio')}else{mediaFiles=[];renderFileChips($('#mediaAttachments'),mediaFiles,()=>mediaFiles,'media')}
-  }catch(error){status.textContent=error.message||'Generation failed.'}
+  }catch(error){status.textContent=error.message||'Generation failed.';await refreshMediaCredits()}
   finally{button.disabled=false}
 }
 
@@ -768,6 +796,8 @@ musicRecordBtn.addEventListener('click',async()=>{
  }catch(e){musicVoiceHelp.textContent='Microphone permission was denied or unavailable. Allow microphone access and try again.'}
 });
 
+$('#studioModel').addEventListener('change',updateMediaCreditCost);
+$('#mediaCreditRefresh').addEventListener('click',refreshMediaCredits);
 $('#studioGenerate').addEventListener('click',generateMedia);
 $('#studioPrompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();generateMedia()}});
 $('#mediaGenerate').addEventListener('click',generateMedia);
