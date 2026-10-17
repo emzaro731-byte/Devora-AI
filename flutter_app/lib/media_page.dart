@@ -36,9 +36,33 @@ class _MediaPageState extends State<MediaPage>{
    setState(()=>pendingReference=ref);
    final opened=await launchUrl(Uri.parse(link),mode:LaunchMode.externalApplication);
    if(!opened)throw Exception('Could not open Flutterwave checkout. Check your browser and try again.');
-   if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Complete payment in Flutterwave, then return here and tap Verify payment.')));
+   if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Complete payment in Flutterwave. Devora will check for confirmation automatically.')));
+   // Poll the server-side verifier while the app is open; the server adds credits only
+   // after Flutterwave confirms the transaction, and the completion RPC is idempotent.
+   unawaited(_autoVerifyPayment(ref));
   }catch(e){if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));}
   finally{if(mounted)setState(()=>purchaseBusy=false);}
+ }
+ Future<void> _autoVerifyPayment(String ref) async {
+  for(var attempt=0;attempt<120;attempt++){
+   await Future.delayed(const Duration(seconds:5));
+   if(!mounted||pendingReference!=ref)return;
+   try{
+    final d=await paymentCall({'action':'verify','reference':ref});
+    if(d['success']==true&&d['pending']!=true){
+     if(!mounted||pendingReference!=ref)return;
+     setState(()=>pendingReference=null);
+     setState(()=>status='Payment confirmed automatically. ${d['credits']??''} credits added.');
+     await refreshBalance();
+     if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Payment confirmed — ${d['credits']??''} credits added.')));
+     return;
+    }
+    if(d['pending']==true&&mounted)setState(()=>status=d['message']?.toString()??'Waiting for Flutterwave confirmation…');
+   }catch(_){
+    // Temporary network/server errors are retried; never award credits client-side.
+   }
+  }
+  if(mounted&&pendingReference==ref)setState(()=>status='Still waiting for payment confirmation. Keep Devora open or tap Verify payment to check again.');
  }
  Future<void> verifyPurchase()async{
   final ref=pendingReference;if(ref==null)return;
