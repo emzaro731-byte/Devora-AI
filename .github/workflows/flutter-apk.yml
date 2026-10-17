@@ -39,7 +39,7 @@ jobs:
         run: |
           flutter pub add webview_flutter
           flutter pub add connectivity_plus
-          flutter pub add permission_handler
+          flutter pub add permission_handler:11.3.1
           flutter pub add flutter_local_notifications
 
       - name: Create Devora-AI app screen
@@ -56,7 +56,7 @@ jobs:
           Future<void> main() async {
             WidgetsFlutterBinding.ensureInitialized();
             const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-            await appNotifications.initialize(const InitializationSettings(android: androidInit));
+            await appNotifications.initialize(settings: const InitializationSettings(android: androidInit));
             runApp(const DevoraApp());
           }
 
