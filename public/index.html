@@ -172,6 +172,18 @@ body{background:radial-gradient(ellipse at 50% -25%,#123d75 0,transparent 45%),r
 #accountBtn:hover{border-color:#4aaaff!important;background:#12345a!important}
 @media(max-width:680px){#sidebarProfile{padding-bottom:8px}#accountBtn{font-size:11px!important;padding:8px!important}}
 
+
+/* Readable, polished AI answers */
+.message.assistant .bubble p{margin:0 0 13px}.message.assistant .bubble p:last-child{margin-bottom:0}
+.message.assistant .bubble h1,.message.assistant .bubble h2,.message.assistant .bubble h3{line-height:1.3;letter-spacing:-.025em;margin:22px 0 10px;color:#f4f2ff}
+.message.assistant .bubble h1{font-size:1.45em}.message.assistant .bubble h2{font-size:1.25em}.message.assistant .bubble h3{font-size:1.1em}
+.message.assistant .bubble ul{margin:8px 0 15px;padding-left:23px}.message.assistant .bubble li{padding:3px 0}
+.message.assistant .bubble blockquote{margin:12px 0;padding:8px 14px;border-left:3px solid #7966d8;background:#14182a;color:#c8cee0;border-radius:0 10px 10px 0}
+.inline-code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:#171c2b;border:1px solid #303751;padding:2px 6px;border-radius:6px;font-size:.9em;color:#a9e9ff}
+.code-block{margin:14px 0;border:1px solid #303650;border-radius:14px;overflow:hidden;background:#080b13}
+.code-head{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#151a2a;border-bottom:1px solid #303650;color:#aab3cb;font-size:11px}
+.copy-code{border:1px solid #38415d;background:#20263a;color:#e7eaff;border-radius:7px;padding:5px 9px;font-size:11px}
+.code-block pre{margin:0;padding:15px;overflow:auto;max-width:100%;font:13px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace;color:#dbe8ff;white-space:pre}
 </style></head>
 <body><div class="app"><aside class="sidebar" id="sidebar"><div class="brand"><div class="logo">D</div><span>devora<span style="color:var(--accent2)">.ai</span></span></div><button class="newchat" id="newChat">＋ &nbsp; New chat</button><div class="media-sidebar">
   <div class="side-label">CREATE WITH AI</div>
@@ -208,7 +220,22 @@ const SUPABASE_KEY='sb_publishable_HIMGxb-O6fj9O7OzT4ukuQ_jm5W8mWz';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let messages=[],busy=false,conversationId=null,currentUser=null,authMode='signin';
 function showChat(){welcome.classList.add('hidden');messagesEl.classList.remove('hidden')}
-function addMessage(role,text){const row=document.createElement('div');row.className='message '+role;const av=document.createElement('div');av.className='msg-avatar';av.textContent=role==='user'?'Y':'D';const bubble=document.createElement('div');bubble.className='bubble';bubble.textContent=text;row.append(av,bubble);messagesEl.append(row);content.scrollTop=content.scrollHeight;return bubble}
+function escapeHTML(value){return String(value).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
+function renderAnswer(value){
+ const parts=String(value).split(/```/);
+ return parts.map((part,index)=>{
+  if(index%2===1){const first=part.indexOf('\n'),lang=first>=0?part.slice(0,first).trim():'',code=first>=0?part.slice(first+1):part;return '<div class="code-block"><div class="code-head"><span>'+escapeHTML(lang||'Code')+'</span><button type="button" class="copy-code">Copy code</button></div><pre><code>'+escapeHTML(code.trimEnd())+'</code></pre></div>'}
+  let html=escapeHTML(part);
+  html=html.replace(/`([^`\n]+)`/g,'<code class="inline-code">$1</code>');
+  html=html.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>');
+  html=html.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<em>$2</em>');
+  html=html.replace(/^&gt; ?(.+)$/gm,'<blockquote>$1</blockquote>');
+  html=html.replace(/^(?:- |\* )(.*)$/gm,'<li>$1</li>');
+  html=html.replace(/((?:<li>.*<\/li>\n?)+)/g,'<ul>$1</ul>');
+  return html.split(/\n{2,}/).map(block=>{const s=block.trim();if(!s)return '';if(/^<(h[1-3]|ul|blockquote|div|pre)/.test(s))return s;return '<p>'+s.replace(/\n/g,'<br>')+'</p>'}).join('');
+ }).join('');
+}
+function addMessage(role,text){const row=document.createElement('div');row.className='message '+role;const av=document.createElement('div');av.className='msg-avatar';av.textContent=role==='user'?'Y':'D';const bubble=document.createElement('div');bubble.className='bubble';if(role==='assistant')bubble.innerHTML=renderAnswer(text);else bubble.textContent=text;row.append(av,bubble);messagesEl.append(row);content.scrollTop=content.scrollHeight;return bubble}
 function setBusy(v){busy=v;$('#send').disabled=v;input.disabled=v}
 function openAuth(mode='signin'){authMode=mode;$('#authTitle').textContent=mode==='signup'?'Create your Devora-AI account':'Sign in to Devora-AI';$('#authSubmit').textContent=mode==='signup'?'Create account':'Sign in';$('#authSwitch').textContent=mode==='signup'?'Already have an account? Sign in':'Create an account';$('#authPassword').autocomplete=mode==='signup'?'new-password':'current-password';$('#authMessage').textContent='';$('#authModal').classList.remove('hidden')}
 function closeAuth(){$('#authModal').classList.add('hidden')}
@@ -216,7 +243,8 @@ async function refreshAccount(){const {data}=await db.auth.getSession();currentU
 async function loadHistory(){const host=$('#history');host.innerHTML='';if(!currentUser){host.textContent='Sign in to sync your chats.';return}const {data,error}=await db.from('devora_conversations').select('id,title,updated_at').order('updated_at',{ascending:false}).limit(20);if(error){host.textContent='Could not load chat history.';return}if(!data.length){host.textContent='Your saved chats will appear here.';return}const list=document.createElement('div');list.className='history-list';data.forEach(item=>{const b=document.createElement('button');b.className='history-row';b.textContent=item.title||'New Chat';b.title=b.textContent;b.onclick=()=>openConversation(item.id);list.append(b)});host.append(list)}
 async function persistConversation(){if(!currentUser||!messages.length)return;const title=(messages.find(m=>m.role==='user')?.content||'New Chat').slice(0,70);const payload={user_id:currentUser.id,title,messages,updated_at:new Date().toISOString()};let result;if(conversationId){result=await db.from('devora_conversations').update(payload).eq('id',conversationId).select('id').single()}else{result=await db.from('devora_conversations').insert(payload).select('id').single();if(!result.error)conversationId=result.data.id}if(result.error)console.warn('Could not save Devora chat:',result.error.message);else await loadHistory()}
 async function openConversation(id){const {data,error}=await db.from('devora_conversations').select('id,title,messages').eq('id',id).single();if(error){alert('Could not open this conversation.');return}conversationId=data.id;messages=Array.isArray(data.messages)?data.messages:[];messagesEl.innerHTML='';showChat();messages.forEach(m=>addMessage(m.role,m.content));$('#sidebar').classList.remove('open')}
-async function sendMessage(text){if(busy||!text.trim())return;showChat();messages.push({role:'user',content:text.trim()});addMessage('user',text.trim());input.value='';input.style.height='auto';const bubble=addMessage('assistant','Thinking…');bubble.classList.add('typing');setBusy(true);try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages})});const data=await r.json();if(!r.ok)throw new Error(data.error||'Something went wrong.');bubble.classList.remove('typing');bubble.textContent=data.reply;messages.push({role:'assistant',content:data.reply});await persistConversation()}catch(e){bubble.classList.remove('typing');bubble.classList.add('error');bubble.textContent=e.message+' If you manage this app, check that GROQ_API_KEY is configured on the server.';}finally{setBusy(false);input.focus();content.scrollTop=content.scrollHeight}}
+async function sendMessage(text){if(busy||!text.trim())return;showChat();messages.push({role:'user',content:text.trim()});addMessage('user',text.trim());input.value='';input.style.height='auto';const bubble=addMessage('assistant','Thinking…');bubble.classList.add('typing');setBusy(true);try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages})});const data=await r.json();if(!r.ok)throw new Error(data.error||'Something went wrong.');bubble.classList.remove('typing');bubble.innerHTML=renderAnswer(data.reply);messages.push({role:'assistant',content:data.reply});await persistConversation()}catch(e){bubble.classList.remove('typing');bubble.classList.add('error');bubble.textContent=e.message+' If you manage this app, check that GROQ_API_KEY is configured on the server.';}finally{setBusy(false);input.focus();content.scrollTop=content.scrollHeight}}
+messagesEl.addEventListener('click',async e=>{const btn=e.target.closest('.copy-code');if(!btn)return;const code=btn.closest('.code-block')?.querySelector('code')?.textContent||'';try{await navigator.clipboard.writeText(code);btn.textContent='Copied!';setTimeout(()=>btn.textContent='Copy code',1400)}catch{btn.textContent='Select code to copy'}});
 $('#form').addEventListener('submit',e=>{e.preventDefault();sendMessage(input.value)});input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(input.scrollHeight,180)+'px'});input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('#form').requestSubmit()}});document.querySelectorAll('[data-prompt]').forEach(b=>b.addEventListener('click',()=>sendMessage(b.dataset.prompt)));
 function reset(){messages=[];conversationId=null;messagesEl.innerHTML='';messagesEl.classList.add('hidden');welcome.classList.remove('hidden');input.value='';}
 $('#newChat').onclick=()=>{reset();$('#sidebar').classList.remove('open');input.focus()};$('#menu').onclick=()=>$('#sidebar').classList.toggle('open');
