@@ -616,10 +616,16 @@ db.auth.onAuthStateChange(()=>{setTimeout(()=>refreshAccount(),0)});
 
 const DEVORA_KIE_MODELS = {
  image: [
-  {id:'gpt-image-2-text-to-image',name:'GPT Image 2 · Detailed & photorealistic'},
-  {id:'nano-banana-2',name:'Nano Banana 2 · Fast, accurate text'},
-  {id:'nano-banana-pro',name:'Nano Banana Pro · Premium detail'},
-  {id:'seedream/5-pro-image-to-image',name:'Seedream 5.0 Pro · Reference/edit workflow'}
+  {id:'gpt-image-2-text-to-image',name:'GPT Image 2 · Premium quality'},
+  {id:'nano-banana-2-1',name:'Nano Banana 2.1 · Latest fast model'},
+  {id:'nano-banana-2',name:'Nano Banana 2 · Fast image generation'},
+  {id:'nano-banana-pro',name:'Nano Banana Pro · High detail'},
+  {id:'grok-imagine-image-2-0/text-to-image',name:'Grok Imagine Image 2.0'},
+  {id:'grok-imagine/text-to-image',name:'Grok Imagine Image'},
+  {id:'bytedance/seedream-v4-text-to-image',name:'Seedream 4.0 · Creative visuals'},
+  {id:'flux-2/pro-text-to-image',name:'FLUX.2 Pro · Photorealistic'},
+  {id:'flux-2/flex-text-to-image',name:'FLUX.2 Flex · Flexible styles'},
+  {id:'qwen2-1/text-to-image',name:'Qwen 2.1 · Prompt control'}
  ],
  video: [
   {id:'bytedance/seedance-2-5',name:'Seedance 2.5 · Cinematic, multimodal'},
@@ -628,7 +634,7 @@ const DEVORA_KIE_MODELS = {
   {id:'grok-imagine-video-1-5-preview',name:'Grok Imagine Video 1.5 · Video + audio'}
  ],
  music: [
-  {id:'V6',name:'Suno V6 · Latest generation'},
+  {id:'V6',name:'Suno V6 · Full song generation'},
   {id:'V6_MINI',name:'Suno V6 Mini · Faster option'},
   {id:'V6_WILD',name:'Suno V6 Wild · Experimental'}
  ]
