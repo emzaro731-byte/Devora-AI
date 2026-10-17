@@ -547,6 +547,194 @@ body:after{width:260px;height:260px;right:-160px;bottom:8%;background:#31d8ff}
   .sidebar #history{overflow:visible!important}
 }
 
+
+/* DEVORA dynamic black + midnight-blue liquid glass */
+:root{
+ --bg:#03060d;--panel:#060b15;--text:#f1f7ff;--muted:#93a9c7;
+ --line:#1b3350;--accent:#258bff;--accent2:#44d9ff;
+}
+html{background:#03060d}
+body{
+ background:
+  radial-gradient(ellipse at 12% 0%,rgba(0,103,255,.17),transparent 38%),
+  radial-gradient(ellipse at 88% 28%,rgba(0,190,255,.09),transparent 32%),
+  radial-gradient(ellipse at 55% 100%,rgba(22,67,150,.16),transparent 44%),
+  #03060d!important;
+ color:var(--text)!important;
+}
+.app{isolation:isolate;background:transparent}
+.sidebar{
+ background:linear-gradient(165deg,rgba(5,15,30,.88),rgba(3,7,15,.94))!important;
+ border-right:1px solid rgba(79,166,255,.19)!important;
+ box-shadow:inset -1px 0 rgba(116,190,255,.05),12px 0 50px rgba(0,0,0,.2);
+ backdrop-filter:blur(32px) saturate(155%)!important;
+ -webkit-backdrop-filter:blur(32px) saturate(155%)!important;
+}
+.brand{color:#f4f9ff}
+.logo{
+ background:linear-gradient(135deg,#0877ff,#38dcff)!important;
+ box-shadow:0 0 24px rgba(23,139,255,.42),inset 0 1px rgba(255,255,255,.35)!important;
+}
+.newchat,.sideitem,.iconbtn{
+ color:#dcecff!important;
+ background:linear-gradient(135deg,rgba(20,52,89,.62),rgba(7,18,35,.72))!important;
+ border:1px solid rgba(94,171,255,.23)!important;
+ box-shadow:inset 0 1px rgba(255,255,255,.08),0 8px 25px rgba(0,0,0,.13);
+ backdrop-filter:blur(16px);
+ transition:background .22s,border-color .22s,box-shadow .22s,transform .22s;
+}
+.newchat:hover,.sideitem:hover,.iconbtn:hover{
+ background:linear-gradient(120deg,rgba(20,89,157,.6),rgba(8,31,58,.86))!important;
+ border-color:rgba(74,182,255,.62)!important;
+ box-shadow:0 0 22px rgba(0,125,255,.13),inset 0 1px rgba(255,255,255,.12);
+ transform:translateY(-1px);
+}
+.side-label{color:#69baff!important;text-shadow:0 0 15px rgba(35,148,255,.18)}
+.history{color:#a2b7d2}
+.history-row{color:#b3c8e4!important}
+.history-row:hover{background:rgba(36,111,190,.16)!important;color:#fff!important}
+.profile{border-color:rgba(92,158,224,.19)!important}
+.avatar{background:linear-gradient(145deg,#15365b,#09172b);border:1px solid #3d77b65c}
+.topbar{
+ background:rgba(4,10,21,.68)!important;
+ border-bottom:1px solid rgba(79,166,255,.14)!important;
+ backdrop-filter:blur(28px) saturate(160%)!important;
+ -webkit-backdrop-filter:blur(28px) saturate(160%)!important;
+}
+.top-title{color:#eaf5ff}
+.content{scrollbar-color:#245b91 transparent}
+.welcome>div:first-child{
+ background:linear-gradient(135deg,rgba(11,42,76,.7),rgba(5,18,36,.7))!important;
+ border:1px solid rgba(67,164,255,.35)!important;
+ color:#b9e2ff!important;
+ box-shadow:inset 0 1px rgba(255,255,255,.09),0 10px 35px rgba(0,90,255,.08);
+ backdrop-filter:blur(20px);
+}
+.welcome>div:first-child span{background:#49dcff!important;box-shadow:0 0 16px #20bfff!important}
+.welcome h1{
+ background:linear-gradient(105deg,#fff 8%,#b7d9ff 43%,#55dfff 78%,#8d9cff 100%)!important;
+ -webkit-background-clip:text!important;background-clip:text!important;
+ color:transparent!important;-webkit-text-fill-color:transparent!important;
+ text-shadow:0 0 42px rgba(29,135,255,.12);
+}
+.welcome p{color:#9cb2d0!important}
+.suggestion{
+ background:linear-gradient(145deg,rgba(15,37,65,.75),rgba(5,13,26,.76))!important;
+ border:1px solid rgba(91,155,218,.2)!important;
+ box-shadow:inset 0 1px rgba(255,255,255,.07),0 15px 35px rgba(0,0,0,.16);
+ backdrop-filter:blur(22px) saturate(145%);
+ -webkit-backdrop-filter:blur(22px) saturate(145%);
+ transition:transform .22s,border-color .22s,box-shadow .22s,background .22s;
+}
+.suggestion:hover{
+ transform:translateY(-3px)!important;
+ border-color:rgba(59,173,255,.56)!important;
+ background:linear-gradient(145deg,rgba(19,60,103,.82),rgba(6,20,39,.86))!important;
+ box-shadow:0 16px 38px rgba(0,105,255,.12),inset 0 1px rgba(255,255,255,.12)!important;
+}
+.suggestion b{color:#eaf5ff!important}.suggestion span{color:#96adcc!important}
+.messages{scrollbar-width:thin}
+.msg-avatar{
+ background:linear-gradient(145deg,rgba(19,50,84,.92),rgba(5,15,29,.96))!important;
+ border:1px solid rgba(81,162,238,.3)!important;color:#d5edff;
+ box-shadow:inset 0 1px rgba(255,255,255,.07);
+}
+.message.assistant .msg-avatar{
+ background:linear-gradient(135deg,#087dff,#3bdcff)!important;color:#041020;
+ border:0!important;box-shadow:0 0 22px rgba(22,140,255,.28);
+}
+.message.user .bubble{
+ background:linear-gradient(135deg,rgba(17,45,78,.92),rgba(7,20,39,.92))!important;
+ border:1px solid rgba(80,157,230,.24)!important;
+ box-shadow:inset 0 1px rgba(255,255,255,.07),0 8px 25px rgba(0,0,0,.12);
+}
+.bubble{color:#e9f3ff}
+.composer-wrap{position:relative}
+.composer{
+ background:linear-gradient(145deg,rgba(12,27,48,.88),rgba(4,12,24,.9))!important;
+ border:1px solid rgba(92,169,241,.35)!important;
+ box-shadow:0 18px 55px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.11),0 0 25px rgba(0,95,255,.05)!important;
+ backdrop-filter:blur(30px) saturate(160%)!important;
+ -webkit-backdrop-filter:blur(30px) saturate(160%)!important;
+ transition:border-color .2s,box-shadow .2s,background .2s;
+}
+.composer:focus-within{
+ border-color:rgba(65,179,255,.75)!important;
+ background:linear-gradient(145deg,rgba(14,35,61,.94),rgba(5,15,29,.94))!important;
+ box-shadow:0 18px 55px rgba(0,0,0,.38),0 0 0 3px rgba(30,139,255,.13),0 0 32px rgba(0,123,255,.1),inset 0 1px rgba(255,255,255,.13)!important;
+}
+.composer textarea{color:#f2f8ff}
+.composer textarea::placeholder{color:#8199b8!important}
+.send{
+ background:linear-gradient(135deg,#087bff,#38d9ff)!important;color:#03101e!important;
+ box-shadow:0 5px 22px rgba(0,130,255,.35),inset 0 1px rgba(255,255,255,.4)!important;
+ transition:transform .18s,filter .18s;
+}
+.send:hover{transform:scale(1.06);filter:brightness(1.12)}
+.disclaimer{color:#748cab!important}
+.media-sidebar{border-color:rgba(87,158,224,.2)!important}
+.media-nav-btn{color:#a9c1df!important;border-color:transparent!important}
+.media-nav-btn:hover{background:rgba(22,69,113,.42)!important;color:#eff8ff!important}
+.media-nav-btn.active{
+ background:linear-gradient(125deg,rgba(15,74,131,.62),rgba(7,29,54,.78))!important;
+ border-color:rgba(72,169,255,.42)!important;color:#eff9ff!important;
+ box-shadow:inset 0 1px rgba(255,255,255,.1),0 5px 20px rgba(0,110,255,.1);
+}
+.media-sidebar textarea,.media-row select,.media-row input{
+ background:rgba(5,16,32,.8)!important;border:1px solid rgba(85,145,202,.32)!important;
+ color:#eef7ff!important;box-shadow:inset 0 1px rgba(255,255,255,.06);
+}
+.media-sidebar textarea:focus,.media-row select:focus,.media-row input:focus{
+ outline:none;border-color:#38a9ff!important;box-shadow:0 0 0 3px rgba(22,139,255,.13)!important;
+}
+.media-sidebar textarea::placeholder,.media-row input::placeholder{color:#7289a9!important}
+.media-generate,.auth-submit{
+ background:linear-gradient(110deg,#087aff,#20b8ee)!important;color:white!important;
+ border:1px solid rgba(127,211,255,.42)!important;
+ box-shadow:0 7px 25px rgba(0,119,255,.22),inset 0 1px rgba(255,255,255,.3)!important;
+}
+.media-generate:hover,.auth-submit:hover{filter:brightness(1.12);transform:translateY(-1px)}
+.cloud-library-btn,.buy-credits-btn{
+ background:linear-gradient(135deg,rgba(13,47,81,.75),rgba(5,17,34,.88))!important;
+ border-color:rgba(75,164,255,.31)!important;color:#e6f4ff!important;
+ box-shadow:inset 0 1px rgba(255,255,255,.09),0 8px 24px rgba(0,0,0,.15);
+ backdrop-filter:blur(18px);
+}
+.cloud-library-btn:hover,.buy-credits-btn:hover{border-color:rgba(68,190,255,.68)!important;background:linear-gradient(135deg,rgba(15,67,116,.82),rgba(5,21,42,.92))!important}
+.buy-credits-btn .buy-credits-pill{background:linear-gradient(110deg,#087aff,#17a9cf)!important;color:white!important}
+.auth-modal,.cloud-modal,.credits-modal{backdrop-filter:blur(22px) saturate(140%)!important;-webkit-backdrop-filter:blur(22px) saturate(140%)!important}
+.auth-card,.cloud-card,.credits-card{
+ background:linear-gradient(145deg,rgba(12,29,51,.97),rgba(4,11,23,.98))!important;
+ border-color:rgba(88,163,232,.3)!important;box-shadow:0 30px 100px rgba(0,0,0,.65),inset 0 1px rgba(255,255,255,.08)!important;
+}
+.auth-card input,.cloud-toolbar input,.cloud-toolbar select{
+ background:rgba(3,11,22,.85)!important;border-color:rgba(84,147,204,.34)!important;color:#eff7ff!important;
+}
+.credit-package,.cloud-item{
+ background:linear-gradient(145deg,rgba(12,34,59,.9),rgba(5,14,27,.92))!important;
+ border-color:rgba(88,151,213,.25)!important;box-shadow:inset 0 1px rgba(255,255,255,.06);
+}
+.credit-package:hover,.credit-package:focus-visible{border-color:rgba(63,185,255,.7)!important;background:linear-gradient(135deg,#103b65,#081a31)!important}
+@keyframes devoraGlassGlow{
+ 0%,100%{opacity:.45;transform:translate3d(-2%,0,0) scale(1)}
+ 50%{opacity:.85;transform:translate3d(2%,1%,0) scale(1.04)}
+}
+.app:before{
+ content:"";position:fixed;z-index:-1;pointer-events:none;inset:-25%;
+ background:
+  radial-gradient(ellipse at 18% 28%,rgba(0,112,255,.12),transparent 27%),
+  radial-gradient(ellipse at 80% 58%,rgba(0,199,255,.075),transparent 24%);
+ filter:blur(34px);animation:devoraGlassGlow 18s ease-in-out infinite alternate;
+}
+@media(prefers-reduced-motion:reduce){.app:before{animation:none}*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
+@media(max-width:680px){
+ .sidebar{background:linear-gradient(165deg,rgba(5,15,30,.97),rgba(3,7,15,.98))!important}
+ .topbar{background:rgba(4,10,21,.84)!important}
+ .welcome h1{font-size:clamp(29px,8vw,36px)}
+ .suggestion{backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px)}
+ .composer{backdrop-filter:blur(22px)!important;-webkit-backdrop-filter:blur(22px)!important}
+}
+
 </style></head>
 <body><div class="app"><aside class="sidebar" id="sidebar"><div class="brand"><div class="logo">D</div><span>devora<span style="color:var(--accent2)">.ai</span></span></div><button type="button" class="newchat" id="newChat">＋ &nbsp; New chat</button><div class="media-sidebar">
   <div class="side-label">CREATE WITH AI</div>
