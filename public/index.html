@@ -766,6 +766,8 @@ async function generateMedia(){
  async function createMovieStoryboard(prompt,count,minutes,mode,offset=0,total=count){const r=await fetch('/api/movie/storyboard',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,count,minutes,mode,offset,total})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Could not create storyboard');return d.scenes}
  async function startMovie(){
   if(movieBusy)return;const prompt=$('#moviePrompt').value.trim(),durationSeconds=Math.max(5,Math.min(10800,Number($('#movieDurationCustom').value)||Number($('#movieDuration').value)||5)),minutes=durationSeconds/60,chosenCount=Number($('#movieScenes').value);
+  await refreshMediaCredits();const needed=movieMode==='full'?Math.ceil(durationSeconds/10)*(movieCosts[$('#movieModel').value]||25):Math.min(1080,Math.max(1,Math.ceil(durationSeconds/30*(chosenCount/12))))*6;
+  if(mediaCreditBalance===null||Number(mediaCreditBalance)<needed){movieStatus('INSUFFICIENT CREDITS · This movie is estimated to need '+needed+' credits, but your balance is '+(mediaCreditBalance===null?'unavailable':mediaCreditBalance)+'. Choose a shorter duration or add credits.');return}
   if(!prompt){movieStatus('Enter a movie idea first.');return}
   const {data:sd}=await db.auth.getSession(),session=sd?.session;if(!session){openAuth();movieStatus('Sign in before generating a movie.');return}
   movieBusy=true;const button=$('#movieStart');button.disabled=true;$('#movieScenesOutput').innerHTML='';$('#movieDownload').innerHTML='';
@@ -862,7 +864,7 @@ musicRecordBtn.addEventListener('click',async()=>{
 
 $('#studioModel').addEventListener('change',updateMediaCreditCost);$('#studioVideoDuration').addEventListener('change',updateMediaCreditCost);
 $('#mediaCreditRefresh').addEventListener('click',refreshMediaCredits);
-$('#studioGenerate').addEventListener('click',generateMedia);
+$('#studioGenerate').addEventListener('click',()=>{if(activeMediaMode==='video'&&(Number($('#studioVideoDuration').value)||10)>10){if(!currentUser){openAuth();return}$('#moviePrompt').value=$('#studioPrompt').value.trim();$('#movieDurationCustom').value=String(Number($('#studioVideoDuration').value));$('#movieDuration').value='5';$('#movieModal').classList.remove('hidden');movieMode='full';document.querySelectorAll('[data-movie-mode]').forEach(x=>x.classList.toggle('active',x.dataset.movieMode==='full'));updateMovieEstimate();return}generateMedia()});
 $('#studioPrompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();generateMedia()}});
 $('#mediaGenerate').addEventListener('click',generateMedia);
 $('#mediaPrompt').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();generateMedia()}});
