@@ -837,18 +837,12 @@ body{
    <div class="credits-head"><div><div class="studio-kicker">DEVORA AI WALLET</div><h2 id="creditsTitle">Buy credits</h2></div><button type="button" id="creditsClose" class="credits-close" aria-label="Close buy credits">✕</button></div>
    <p class="credits-subtitle">Choose a package. Pay securely with Flutterwave using card, bank transfer, or USSD. Credits are added only after payment verification.</p>
    <div class="credits-grid" id="creditsPackages">
-    <button type="button" class="credit-package" data-package="pack_5k"><span><strong>1,000 credits</strong><small>Starter pack</small></span><span class="package-price">₦5,000</span></button>
-    <button type="button" class="credit-package" data-package="pack_10k"><span><strong>2,000 credits</strong><small>Value pack</small></span><span class="package-price">₦10,000</span></button>
-    <button type="button" class="credit-package" data-package="pack_15k"><span><strong>3,000 credits</strong><small>Creator pack</small></span><span class="package-price">₦15,000</span></button>
-    <button type="button" class="credit-package" data-package="pack_20k"><span><strong>4,000 credits</strong><small>Creator pack</small></span><span class="package-price">₦20,000</span></button>
-    <button type="button" class="credit-package" data-package="pack_25k"><span><strong>5,000 credits</strong><small>Studio pack</small></span><span class="package-price">₦25,000</span></button>
-    <button type="button" class="credit-package" data-package="pack_30k"><span><strong>6,000 credits</strong><small>Studio pack</small></span><span class="package-price">₦30,000</span></button>
-    <button type="button" class="credit-package" data-package="pack_35k"><span><strong>7,000 credits</strong><small>Studio pack</small></span><span class="package-price">₦35,000</span></button>
-    <button type="button" class="credit-package" data-package="pack_40k"><span><strong>8,000 credits</strong><small>Pro pack</small></span><span class="package-price">₦40,000</span></button>
-    <button type="button" class="credit-package" data-package="pack_45k"><span><strong>9,000 credits</strong><small>Pro pack</small></span><span class="package-price">₦45,000</span></button>
-    <button type="button" class="credit-package" data-package="pack_50k"><span><strong>10,000 credits</strong><small>Pro pack</small></span><span class="package-price">₦50,000</span></button>
-    <button type="button" class="credit-package" data-package="pack_55k"><span><strong>11,000 credits</strong><small>Business pack</small></span><span class="package-price">₦55,000</span></button>
-    <button type="button" class="credit-package" data-package="pack_60k"><span><strong>12,000 credits</strong><small>Business pack</small></span><span class="package-price">₦60,000</span></button>
+    <button type="button" class="credit-package" data-package="pack_10k"><span><strong>1,000 credits</strong><small>Starter pack</small></span><span class="package-price">₦10,000</span></button>
+    <button type="button" class="credit-package" data-package="pack_20k"><span><strong>2,000 credits</strong><small>Value pack</small></span><span class="package-price">₦20,000</span></button>
+    <button type="button" class="credit-package" data-package="pack_30k"><span><strong>3,000 credits</strong><small>Creator pack</small></span><span class="package-price">₦30,000</span></button>
+    <button type="button" class="credit-package" data-package="pack_40k"><span><strong>4,000 credits</strong><small>Pro pack</small></span><span class="package-price">₦40,000</span></button>
+    <button type="button" class="credit-package" data-package="pack_50k"><span><strong>5,000 credits</strong><small>Studio pack</small></span><span class="package-price">₦50,000</span></button>
+    <button type="button" class="credit-package" data-package="pack_60k"><span><strong>6,000 credits</strong><small>Business pack</small></span><span class="package-price">₦60,000</span></button>
    </div>
    <p id="creditsStatus" class="credits-status" aria-live="polite">Select a package to continue to secure checkout.</p>
    <p class="credits-payment-note">Never close checkout before Flutterwave confirms your payment. If you pay by bank transfer, return to Devora AI after the transfer is confirmed and your order will be checked.</p>
@@ -915,10 +909,8 @@ function openAuth(mode='signin'){authMode=mode;$('#authTitle').textContent=mode=
 function closeAuth(){if(!currentUser){document.body.classList.add('auth-required');$('#authModal').classList.remove('hidden');return}document.body.classList.remove('auth-required');$('#authModal').classList.add('hidden')}
 
 const CREDIT_PACKAGES = {
- pack_5k:{amount:5000,credits:1000},pack_10k:{amount:10000,credits:2000},pack_15k:{amount:15000,credits:3000},
- pack_20k:{amount:20000,credits:4000},pack_25k:{amount:25000,credits:5000},pack_30k:{amount:30000,credits:6000},
- pack_35k:{amount:35000,credits:7000},pack_40k:{amount:40000,credits:8000},pack_45k:{amount:45000,credits:9000},
- pack_50k:{amount:50000,credits:10000},pack_55k:{amount:55000,credits:11000},pack_60k:{amount:60000,credits:12000}
+ pack_10k:{amount:10000,credits:1000},pack_20k:{amount:20000,credits:2000},pack_30k:{amount:30000,credits:3000},
+ pack_40k:{amount:40000,credits:4000},pack_50k:{amount:50000,credits:5000},pack_60k:{amount:60000,credits:6000}
 };
 function openBuyCredits(){if(!currentUser){openAuth();return}$('#creditsModal').classList.remove('hidden');$('#creditsStatus').textContent='Choose a package. You will be redirected to secure Flutterwave checkout.'}
 function closeBuyCredits(){$('#creditsModal').classList.add('hidden')}
