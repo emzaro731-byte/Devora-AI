@@ -34,7 +34,7 @@ app.post('/api/movie/storyboard', async (req,res) => {
     if(!key)return res.status(503).json({error:'GROQ_API_KEY is required to write a movie storyboard.'});
     const prompt=typeof req.body.prompt==='string'?req.body.prompt.trim().slice(0,4000):'';
     const count=Math.max(1,Math.min(60,Number.parseInt(req.body.count,10)||12));
-    const minutes=Math.max(1,Math.min(60,Number.parseInt(req.body.minutes,10)||1));
+    const minutes=Math.max(1,Math.min(180,Number.parseInt(req.body.minutes,10)||1));
     const mode=req.body.mode==='smart'?'smart':'full';
     if(!prompt)return res.status(400).json({error:'Enter a movie idea.'});
     const response=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.GROQ_MODEL||'openai/gpt-oss-120b',temperature:0.7,max_tokens:Math.min(8000,500+count*100),response_format:{type:'json_object'},messages:[{role:'system',content:'You are a film screenwriter and storyboard artist. Return valid JSON only, shaped as {"scenes":[{"title":"short title","description":"visual action for this scene","continuity":"details that should stay consistent","camera":"shot and camera movement","mood":"mood"}]}. Make scenes sequential, visually distinct, coherent, and keep characters, wardrobe and locations consistent. No markdown.'},{role:'user',content:'Create exactly '+count+' storyboard scenes for this movie concept: '+prompt+'. Target duration: '+minutes+' minutes. Production mode: '+mode+'. Each scene must be visually producible as one short clip or one keyframe image, with a beginning, progression, climax and ending.'}]})});
