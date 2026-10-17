@@ -10,6 +10,8 @@ A responsive ChatGPT-style AI chat app with a secure server-side Groq integratio
 4. Optional: set `GROQ_MODEL` to a model available to your Groq account.
 5. Run `npm start` and open `http://localhost:3000`.
 
+The default model is `openai/gpt-oss-120b` through Groq. You can override it with the `GROQ_MODEL` environment variable if needed.
+
 ## Deploy to Render
 
 Create a new Web Service from this repository. Render detects `render.yaml`; set `GROQ_API_KEY` in the service Environment settings. The app uses `PORT` supplied by Render. Do not commit API keys to GitHub.
