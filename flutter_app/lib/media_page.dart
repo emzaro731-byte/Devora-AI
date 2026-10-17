@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 const mediaSupabaseUrl = 'https://vihbsfrwnslnmheowkhy.supabase.co';
 const mediaSupabaseKey = 'sb_publishable_HIMGxb-O6fj9O7OzT4ukuQ_jm5W8mWz';
@@ -14,8 +15,50 @@ class MediaPage extends StatefulWidget {
 class _MediaPageState extends State<MediaPage>{
  final prompt=TextEditingController();
  String type='image',style='Photorealistic',ratio='1:1',model='';
- bool busy=false;String status='';String? error,mediaUrl;
+ bool busy=false,creditLoading=false,purchaseBusy=false;String status='';String? error,mediaUrl,pendingReference;int? creditBalance;
  final styles=['Auto','Photorealistic','Cinematic','Anime','3D render','Digital art','Illustration','Watercolor','Oil painting','Comic book','Fantasy art','Cyberpunk','Pixel art','Minimalist','Fashion editorial','Vintage film','Documentary','Music video','Film noir','Retro futurism','Commercial'];
+ Future<Map<String,dynamic>> paymentCall(Map<String,dynamic> body)async{
+  final r=await http.post(Uri.parse(mediaSupabaseUrl+'/functions/v1/devora-credit-payments'),headers:{'Content-Type':'application/json','apikey':mediaSupabaseKey,'Authorization':'Bearer '+widget.token},body:jsonEncode(body)).timeout(const Duration(seconds:45));
+  final d=jsonDecode(r.body) as Map<String,dynamic>;if(r.statusCode<200||r.statusCode>=300)throw Exception(d['error']??d['message']??'Payment request failed');return d;
+ }
+ Future<void> refreshBalance()async{
+  if(creditLoading)return;setState(()=>creditLoading=true);
+  try{final d=await call({'action':'credits'});if(mounted)setState(()=>creditBalance=(d['balance'] as num?)?.toInt());}
+  catch(e){if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));}
+  finally{if(mounted)setState(()=>creditLoading=false);}
+ }
+ Future<void> buyCredits(String packageId)async{
+  setState(()=>{purchaseBusy=true,error=null});
+  try{
+   final d=await paymentCall({'action':'create','packageId':packageId});
+   final ref=d['reference']?.toString()??'';final link=d['checkoutUrl']?.toString()??'';
+   if(ref.isEmpty||link.isEmpty)throw Exception('Flutterwave did not return a checkout link.');
+   setState(()=>pendingReference=ref);
+   final opened=await launchUrl(Uri.parse(link),mode:LaunchMode.externalApplication);
+   if(!opened)throw Exception('Could not open Flutterwave checkout. Check your browser and try again.');
+   if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Complete payment in Flutterwave, then return here and tap Verify payment.')));
+  }catch(e){if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));}
+  finally{if(mounted)setState(()=>purchaseBusy=false);}
+ }
+ Future<void> verifyPurchase()async{
+  final ref=pendingReference;if(ref==null)return;
+  setState(()=>{purchaseBusy=true,error=null,status='Verifying Flutterwave payment…'});
+  try{
+   final d=await paymentCall({'action':'verify','reference':ref});
+   if(d['pending']==true){setState(()=>status=d['message']?.toString()??'Payment is still pending. Try again shortly.');return;}
+   setState(()=>{pendingReference=null,status='Payment confirmed. '+(d['credits']?.toString()??'')+' credits added.'});
+   await refreshBalance();
+  }catch(e){setState(()=>error=e.toString().replaceFirst('Exception: ',''));}
+  finally{if(mounted)setState(()=>purchaseBusy=false);}
+ }
+ void showCreditPacks(){
+  showModalBottomSheet<void>(context:context,isScrollControlled:true,backgroundColor:const Color(0xFF111B2B),builder:(ctx)=>SafeArea(child:Padding(padding:const EdgeInsets.all(18),child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+   const Text('Buy Devora credits',style:TextStyle(fontSize:23,fontWeight:FontWeight.bold)),const SizedBox(height:6),const Text('Secure checkout powered by Flutterwave · NGN',style:TextStyle(color:Colors.white60)),const SizedBox(height:14),
+   for(final pack in const [{'id':'starter','credits':500,'price':500,'name':'Starter'},{'id':'creator','credits':1000,'price':1000,'name':'Creator'},{'id':'studio','credits':2000,'price':2000,'name':'Studio'},{'id':'filmmaker','credits':5000,'price':5000,'name':'Filmmaker'}])
+    Card(color:const Color(0xFF17253A),child:ListTile(title:Text(pack['name'].toString(),style:const TextStyle(fontWeight:FontWeight.bold)),subtitle:Text(pack['credits'].toString()+' credits'),trailing:FilledButton(onPressed:purchaseBusy?null:(){Navigator.pop(ctx);buyCredits(pack['id'].toString());},child:Text('₦'+(pack['price'] as int).toString())))),
+   const SizedBox(height:8),const Text('Credits are added only after Flutterwave confirms the payment.',style:TextStyle(color:Colors.white54,fontSize:12))
+  ]))));
+ }
  Future<Map<String,dynamic>> call(Map<String,dynamic> body)async{
   final r=await http.post(Uri.parse(mediaSupabaseUrl+'/functions/v1/devora-media'),headers:{'Content-Type':'application/json','apikey':mediaSupabaseKey,'Authorization':'Bearer '+widget.token},body:jsonEncode(body)).timeout(const Duration(seconds:90));
   final d=jsonDecode(r.body) as Map<String,dynamic>;if(r.statusCode<200||r.statusCode>=300||d['error']!=null)throw Exception(d['error']??'Media request failed');return d;
@@ -59,10 +102,18 @@ class _MediaPageState extends State<MediaPage>{
   }catch(e){setState(()=>error=e.toString().replaceFirst('Exception: ',''));}
   finally{if(mounted)setState(()=>busy=false);}
  }
+ @override void initState(){super.initState();refreshBalance();}
  @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.all(16),children:[
   const Text('DEVORA AI STUDIO',style:TextStyle(color:Color(0xFF22D3EE),letterSpacing:2,fontWeight:FontWeight.bold)),
   const SizedBox(height:8),const Text('Create image, video or music',style:TextStyle(fontSize:25,fontWeight:FontWeight.bold)),
   const SizedBox(height:8),const Text('Each successful generation is uploaded to Supabase and recorded in chat history.',style:TextStyle(color:Colors.white60)),
+  const SizedBox(height:14),
+  Card(color:const Color(0xFF102A34),child:Padding(padding:const EdgeInsets.all(14),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+   const Text('YOUR DEVORA CREDITS',style:TextStyle(color:Color(0xFF22D3EE),fontWeight:FontWeight.bold,letterSpacing:1)),
+   const SizedBox(height:5),Row(children:[Expanded(child:Text(creditLoading?'Loading balance…':creditBalance==null?'Balance unavailable':'${creditBalance} credits',style:const TextStyle(fontSize:24,fontWeight:FontWeight.bold))),IconButton(onPressed:creditLoading?null:refreshBalance,icon:const Icon(Icons.refresh)),FilledButton.icon(onPressed:purchaseBusy?null:showCreditPacks,icon:const Icon(Icons.add_card),label:const Text('Buy credits'))]),
+   if(pendingReference!=null)Padding(padding:const EdgeInsets.only(top:8),child:FilledButton.tonalIcon(onPressed:purchaseBusy?null:verifyPurchase,icon:const Icon(Icons.verified_outlined),label:Text(purchaseBusy?'Checking payment…':'Verify payment'))),
+   if(pendingReference!=null)const Text('After completing checkout, return to Devora and verify your payment.',style:TextStyle(color:Colors.white60,fontSize:12))
+  ]))),
   const SizedBox(height:18),
   SegmentedButton<String>(segments:const [ButtonSegment(value:'image',label:Text('Image'),icon:Icon(Icons.image_outlined)),ButtonSegment(value:'video',label:Text('Video'),icon:Icon(Icons.videocam_outlined)),ButtonSegment(value:'music',label:Text('Music'),icon:Icon(Icons.music_note))],selected:{type},onSelectionChanged:(v)=>setState(()=>{type=v.first,model='',mediaUrl=null})),
   const SizedBox(height:14),TextField(controller:prompt,minLines:3,maxLines:6,decoration:InputDecoration(labelText:type.toUpperCase()+' prompt',hintText:type=='music'?'Describe the song, genre, mood and vocals…':'Describe what you want to create…',alignLabelWithHint:true)),
