@@ -513,6 +513,40 @@ body:after{width:260px;height:260px;right:-160px;bottom:8%;background:#31d8ff}
 .credits-status{font-size:12px;color:#9db8d8;line-height:1.5;min-height:20px;margin:13px 2px 0;white-space:pre-wrap}
 .credits-payment-note{font-size:11px;color:#829bb9;margin:12px 2px 0;line-height:1.5}
 @media(max-width:460px){.credits-card{padding:15px;border-radius:17px}.credits-grid{grid-template-columns:1fr}.credits-head h2{font-size:21px}.credit-package{padding:12px}}
+
+/* Sidebar and conversation history scroll as one continuous panel */
+.sidebar{
+  height:100dvh!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior-y:contain;
+  scrollbar-width:thin;
+  scrollbar-color:#31577f transparent;
+  justify-content:flex-start!important;
+  align-items:stretch;
+  -webkit-overflow-scrolling:touch;
+}
+.sidebar>*{flex-shrink:0}
+.sidebar #history{
+  min-height:0;
+  max-height:none!important;
+  overflow:visible!important;
+  flex:0 0 auto;
+  overflow-wrap:anywhere;
+}
+.sidebar .profile{
+  margin-top:14px!important;
+  flex-shrink:0!important;
+}
+.sidebar::-webkit-scrollbar{width:6px}
+.sidebar::-webkit-scrollbar-track{background:transparent}
+.sidebar::-webkit-scrollbar-thumb{background:#31577f88;border-radius:20px}
+@media(max-width:680px){
+  .sidebar{height:100dvh!important;max-height:100dvh!important;overflow-y:auto!important;overscroll-behavior-y:contain}
+  .sidebar #history{overflow:visible!important}
+}
+
 </style></head>
 <body><div class="app"><aside class="sidebar" id="sidebar"><div class="brand"><div class="logo">D</div><span>devora<span style="color:var(--accent2)">.ai</span></span></div><button type="button" class="newchat" id="newChat">＋ &nbsp; New chat</button><div class="media-sidebar">
   <div class="side-label">CREATE WITH AI</div>
