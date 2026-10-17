@@ -47,6 +47,5 @@ $('#authClose').onclick=closeAuth;$('#authModal').addEventListener('click',e=>{i
 $('#authSwitch').onclick=()=>openAuth(authMode==='signup'?'signin':'signup');
 $('#authForm').addEventListener('submit',async e=>{e.preventDefault();const email=$('#authEmail').value.trim(),password=$('#authPassword').value;const submit=$('#authSubmit'),note=$('#authMessage');submit.disabled=true;note.textContent='Please wait…';try{if(authMode==='signup'){const {data,error}=await db.auth.signUp({email,password});if(error)throw error;if(data.session){note.textContent='Account created. You are signed in.';await refreshAccount();setTimeout(closeAuth,700)}else{note.textContent='Account created. Check your email for a confirmation link, then sign in.'}}else{const {error}=await db.auth.signInWithPassword({email,password});if(error)throw error;await refreshAccount();closeAuth()}}catch(err){note.textContent=err.message||'Authentication failed.'}finally{submit.disabled=false}});
 db.auth.onAuthStateChange(()=>{setTimeout(()=>refreshAccount(),0)});
-document.querySelectorAll('[data-prompt]').forEach(b=>b.addEventListener('click',()=>sendMessage(b.dataset.prompt)));
 refreshAccount();
 </script></body></html>
