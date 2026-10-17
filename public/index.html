@@ -509,6 +509,11 @@ body:after{width:260px;height:260px;right:-160px;bottom:8%;background:#31d8ff}
    <button type="button" class="studio-tab" data-studio-mode="video"><span>▶</span>Video</button>
    <button type="button" class="studio-tab" data-studio-mode="music"><span>♫</span>Music</button>
   </div>
+  <div class="studio-option-field model-picker-field">
+   <label class="studio-option-heading" for="studioModel">AI model</label>
+   <select class="studio-select" id="studioModel" aria-label="Choose KIE AI model"></select>
+   <p class="studio-option-note" id="studioModelNote">Choose the generation model. Availability and credits depend on your KIE.ai account.</p>
+  </div>
   <div class="studio-options" id="visualOptions">
    <div class="studio-option-field">
     <label class="studio-option-heading" for="studioStyle">Visual style</label>
@@ -609,6 +614,34 @@ $('#authSwitch').onclick=()=>openAuth(authMode==='signup'?'signin':'signup');
 $('#authForm').addEventListener('submit',async e=>{e.preventDefault();const email=$('#authEmail').value.trim(),password=$('#authPassword').value;const submit=$('#authSubmit'),note=$('#authMessage');submit.disabled=true;note.textContent='Please wait…';try{if(authMode==='signup'){const {data,error}=await db.auth.signUp({email,password});if(error)throw error;if(data.session){note.textContent='Account created. You are signed in.';await refreshAccount();setTimeout(closeAuth,700)}else{note.textContent='Account created. Check your email for a confirmation link, then sign in.'}}else{const {error}=await db.auth.signInWithPassword({email,password});if(error)throw error;await refreshAccount();closeAuth()}}catch(err){note.textContent=err.message||'Authentication failed.'}finally{submit.disabled=false}});
 db.auth.onAuthStateChange(()=>{setTimeout(()=>refreshAccount(),0)});
 
+const DEVORA_KIE_MODELS = {
+ image: [
+  {id:'gpt-image-2-text-to-image',name:'GPT Image 2 · Detailed & photorealistic'},
+  {id:'nano-banana-2',name:'Nano Banana 2 · Fast, accurate text'},
+  {id:'nano-banana-pro',name:'Nano Banana Pro · Premium detail'},
+  {id:'seedream/5-pro-image-to-image',name:'Seedream 5.0 Pro · Reference/edit workflow'}
+ ],
+ video: [
+  {id:'bytedance/seedance-2-5',name:'Seedance 2.5 · Cinematic, multimodal'},
+  {id:'veo-3-1',name:'Google Veo 3.1 · High quality'},
+  {id:'kling-3.0/video',name:'Kling 3.0 · Multi-shot video'},
+  {id:'grok-imagine-video-1-5-preview',name:'Grok Imagine Video 1.5 · Video + audio'}
+ ],
+ music: [
+  {id:'V6',name:'Suno V6 · Latest generation'},
+  {id:'V6_MINI',name:'Suno V6 Mini · Faster option'},
+  {id:'V6_WILD',name:'Suno V6 Wild · Experimental'}
+ ]
+};
+function populateKieModels(mode, preferred){
+ const select=$('#studioModel'); if(!select)return;
+ const list=DEVORA_KIE_MODELS[mode]||[];
+ select.replaceChildren();
+ list.forEach(item=>{const option=document.createElement('option');option.value=item.id;option.textContent=item.name;select.append(option)});
+ if(preferred&&list.some(item=>item.id===preferred))select.value=preferred;
+ const notes={image:'Image models can have different editing, size, and reference-image requirements.',video:'Video models differ in duration, quality, audio, and reference-media support.',music:'Suno versions create full tracks; generation uses KIE.ai credits.'};
+ $('#studioModelNote').textContent=notes[mode]||'Choose a model.';
+}
 async function generateMedia(){
   const inStudio=studioOpen;
   const type=inStudio?activeMediaMode:$('#mediaType').value;
@@ -637,7 +670,8 @@ async function generateMedia(){
     const enhancedPrompt=(styleText+ratioText+prompt).trim();
     const uploadedFiles=[];
     for(const file of selectedFiles){if(file.type.startsWith('image/')||file.type.startsWith('audio/')||file.type.startsWith('video/'))uploadedFiles.push(await readFileData(file));else if(/\.(txt|md|csv|json)$/i.test(file.name))uploadedFiles.push({name:file.name,type:file.type||'text/plain',content:(await fileToText(file)).slice(0,30000)});else uploadedFiles.push({name:file.name,type:file.type||'application/octet-stream',size:file.size});}
-    const task=await call({type,prompt:enhancedPrompt,style:visualStyle,aspectRatio:aspectRatio,aspect_ratio:aspectRatio,files:uploadedFiles,attachments:uploadedFiles});
+    const chosenModel=$('#studioModel')?.value||'';
+    const task=await call({type,model:chosenModel,prompt:enhancedPrompt,style:visualStyle,aspectRatio:aspectRatio,aspect_ratio:aspectRatio,files:uploadedFiles,attachments:uploadedFiles});
     status.textContent='Generation queued. Waiting for KIE.ai…';
     let finalData=null;
     for(let i=0;i<90;i++){
@@ -663,6 +697,7 @@ async function generateMedia(){
 // Dedicated creation studio: each media option opens its own full workspace.
 function setStudioMode(mode){
  activeMediaMode=mode;$('#mediaType').value=mode;
+ populateKieModels(mode);
  const info={
   image:{title:'Create an image',subtitle:'Turn your idea into a polished visual with AI.',placeholder:'Describe the subject, art style, colors, lighting, and composition...',hint:'Tip: include the style, subject, mood, and visual details.',button:'✦ Generate image'},
   video:{title:'Create a video',subtitle:'Bring a scene, story, or concept to life with AI video.',placeholder:'Describe the scene, camera movement, action, setting, and visual style...',hint:'Tip: explain what happens in the scene and how the camera should move.',button:'▶ Generate video'},
