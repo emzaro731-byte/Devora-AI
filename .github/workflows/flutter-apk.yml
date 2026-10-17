@@ -1,0 +1,173 @@
+name: Build Devora-AI Flutter APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/flutter-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Create Flutter Android app
+        run: flutter create --platforms=android --project-name devora_ai --org com.devoraai flutter_app
+
+      - name: Configure app dependencies
+        working-directory: flutter_app
+        run: |
+          flutter pub add webview_flutter
+          flutter pub add connectivity_plus
+
+      - name: Create Devora-AI app screen
+        working-directory: flutter_app
+        run: |
+          cat > lib/main.dart <<'DART'
+          import 'package:flutter/material.dart';
+          import 'package:webview_flutter/webview_flutter.dart';
+
+          void main() => runApp(const DevoraApp());
+
+          class DevoraApp extends StatelessWidget {
+            const DevoraApp({super.key});
+
+            @override
+            Widget build(BuildContext context) {
+              return MaterialApp(
+                title: 'Devora-AI',
+                debugShowCheckedModeBanner: false,
+                theme: ThemeData(
+                  brightness: Brightness.dark,
+                  scaffoldBackgroundColor: const Color(0xFF050913),
+                  colorScheme: ColorScheme.fromSeed(
+                    seedColor: const Color(0xFF278BFF),
+                    brightness: Brightness.dark,
+                  ),
+                  useMaterial3: true,
+                ),
+                home: const DevoraWebScreen(),
+              );
+            }
+          }
+
+          class DevoraWebScreen extends StatefulWidget {
+            const DevoraWebScreen({super.key});
+
+            @override
+            State<DevoraWebScreen> createState() => _DevoraWebScreenState();
+          }
+
+          class _DevoraWebScreenState extends State<DevoraWebScreen> {
+            late final WebViewController controller;
+            bool loading = true;
+            String? loadError;
+
+            @override
+            void initState() {
+              super.initState();
+              controller = WebViewController()
+                ..setJavaScriptMode(JavaScriptMode.unrestricted)
+                ..setBackgroundColor(const Color(0xFF050913))
+                ..setNavigationDelegate(
+                  NavigationDelegate(
+                    onPageStarted: (_) => setState(() {
+                      loading = true;
+                      loadError = null;
+                    }),
+                    onPageFinished: (_) => setState(() => loading = false),
+                    onWebResourceError: (error) {
+                      if (error.isForMainFrame == true) {
+                        setState(() {
+                          loading = false;
+                          loadError = 'Could not load Devora-AI. Check your internet and try again.';
+                        });
+                      }
+                    },
+                  ),
+                )
+                ..loadRequest(Uri.parse('https://devora-ai-zcmz.onrender.com'));
+            }
+
+            Future<bool> _back() async {
+              if (await controller.canGoBack()) {
+                await controller.goBack();
+                return false;
+              }
+              return true;
+            }
+
+            @override
+            Widget build(BuildContext context) {
+              return WillPopScope(
+                onWillPop: _back,
+                child: Scaffold(
+                  body: SafeArea(
+                    child: Stack(
+                      children: [
+                        WebViewWidget(controller: controller),
+                        if (loading)
+                          const Align(
+                            alignment: Alignment.topCenter,
+                            child: LinearProgressIndicator(minHeight: 2),
+                          ),
+                        if (loadError != null)
+                          Container(
+                            color: const Color(0xFF050913),
+                            alignment: Alignment.center,
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.cloud_off, size: 48, color: Color(0xFF50D9FF)),
+                                const SizedBox(height: 16),
+                                Text(loadError!, textAlign: TextAlign.center),
+                                const SizedBox(height: 18),
+                                FilledButton(
+                                  onPressed: () => controller.reload(),
+                                  child: const Text('Try again'),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+          }
+          DART
+
+      - name: Ensure internet permission
+        working-directory: flutter_app
+        run: |
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>' "$MANIFEST"
+          sed -i 's/android:label="devora_ai"/android:label="Devora-AI"/' "$MANIFEST"
+
+      - name: Build release APK
+        working-directory: flutter_app
+        run: flutter build apk --release
+
+      - name: Publish APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Devora-AI-Android-APK
+          path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
