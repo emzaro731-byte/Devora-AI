@@ -895,4 +895,26 @@ document.addEventListener('click',e=>{
 });
 
 refreshAccount();
-</script></body></html>
+</script><script id="devora-auto-scenes-guard">
+/* Compatibility guard for older cached movie-studio markup: scene count is duration-driven. */
+(function(){
+  function removeManualSceneSelector(){
+    document.querySelectorAll('label').forEach(function(label){
+      if((label.textContent||'').trim().toLowerCase()==='number of scenes / keyframes'){
+        var field=label.closest('.movie-field');
+        if(field)field.remove();
+      }
+    });
+    document.querySelectorAll('select[id*="movieScene"], select[name*="movieScene"]').forEach(function(el){
+      var field=el.closest('.movie-field');
+      if(field)field.remove(); else el.remove();
+    });
+    document.querySelectorAll('.movie-grid').forEach(function(grid){
+      if(!grid.querySelector('.movie-field'))grid.remove();
+    });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',removeManualSceneSelector,{once:true});
+  else removeManualSceneSelector();
+})();
+</script>
+</body></html>
