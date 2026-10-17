@@ -39,6 +39,8 @@ jobs:
         run: |
           flutter pub add webview_flutter
           flutter pub add connectivity_plus
+          flutter pub add permission_handler
+          flutter pub add flutter_local_notifications
 
       - name: Create Devora-AI app screen
         working-directory: flutter_app
@@ -46,8 +48,17 @@ jobs:
           cat > lib/main.dart <<'DART'
           import 'package:flutter/material.dart';
           import 'package:webview_flutter/webview_flutter.dart';
+          import 'package:permission_handler/permission_handler.dart';
+          import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-          void main() => runApp(const DevoraApp());
+          final FlutterLocalNotificationsPlugin appNotifications = FlutterLocalNotificationsPlugin();
+
+          Future<void> main() async {
+            WidgetsFlutterBinding.ensureInitialized();
+            const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+            await appNotifications.initialize(const InitializationSettings(android: androidInit));
+            runApp(const DevoraApp());
+          }
 
           class DevoraApp extends StatelessWidget {
             const DevoraApp({super.key});
@@ -86,6 +97,7 @@ jobs:
             @override
             void initState() {
               super.initState();
+              _requestAppPermissions();
               controller = WebViewController()
                 ..setJavaScriptMode(JavaScriptMode.unrestricted)
                 ..setBackgroundColor(const Color(0xFF050913))
@@ -107,6 +119,14 @@ jobs:
                   ),
                 )
                 ..loadRequest(Uri.parse('https://devora-ai-zcmz.onrender.com'));
+            }
+
+            Future<void> _requestAppPermissions() async {
+              // Ask Android for notification and microphone access when the app starts.
+              await Permission.notification.request();
+              await Permission.microphone.request();
+              // Camera permission is available for future camera/upload features.
+              await Permission.camera.request();
             }
 
             Future<bool> _back() async {
@@ -163,7 +183,7 @@ jobs:
         working-directory: flutter_app
         run: |
           MANIFEST=android/app/src/main/AndroidManifest.xml
-          sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>' "$MANIFEST"
+          sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <uses-permission android:name="android.permission.CAMERA"/>' "$MANIFEST"
           sed -i 's/android:label="devora_ai"/android:label="Devora-AI"/' "$MANIFEST"
 
       - name: Build release APK
