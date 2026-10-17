@@ -735,6 +735,19 @@ body{
  .composer{backdrop-filter:blur(22px)!important;-webkit-backdrop-filter:blur(22px)!important}
 }
 
+
+/* Keep chat history in the same scrolling flow as the entire sidebar. */
+#sidebar #history,
+#sidebar #history .history-list{
+  height:auto!important;
+  max-height:none!important;
+  overflow:visible!important;
+  flex:0 0 auto!important;
+  overscroll-behavior:unset!important;
+}
+#sidebar #history .history-row{
+  flex-shrink:0;
+}
 </style></head>
 <body><div class="app"><aside class="sidebar" id="sidebar"><div class="brand"><div class="logo">D</div><span>devora<span style="color:var(--accent2)">.ai</span></span></div><button type="button" class="newchat" id="newChat">＋ &nbsp; New chat</button><div class="media-sidebar">
   <div class="side-label">CREATE WITH AI</div>
