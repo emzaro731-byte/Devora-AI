@@ -486,6 +486,15 @@ body:after{width:260px;height:260px;right:-160px;bottom:8%;background:#31d8ff}
   .sidebar .history-list{max-height:42vh}
 }
 
+
+/* Long-form movie creator */
+.movie-launch{display:none;margin:0 0 12px;padding:13px 15px;border:1px solid #328cfb66;border-radius:14px;background:linear-gradient(115deg,#0c2d50,#111c32);color:#f0f7ff;font-weight:750;cursor:pointer;width:100%;text-align:left}
+.movie-launch small{display:block;color:#9bb9dc;font-weight:500;margin-top:4px}
+.movie-modal{position:fixed;inset:0;z-index:90;background:#050914f2;backdrop-filter:blur(18px);overflow:auto;padding:20px;display:flex;align-items:flex-start;justify-content:center}
+.movie-card{width:min(900px,100%);margin:20px auto;background:linear-gradient(145deg,#101b2c,#080d18);border:1px solid #34547788;border-radius:22px;padding:22px;box-shadow:0 24px 90px #0009}
+.movie-head{display:flex;justify-content:space-between;gap:12px;align-items:center}.movie-head h2{margin:4px 0 8px;font-size:25px}.movie-close{border:1px solid #38516c;background:#102137;color:white;border-radius:10px;padding:8px 12px}
+.movie-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}.movie-field label{display:block;font-size:12px;color:#a9c5e5;margin-bottom:7px}.movie-field select,.movie-field input,.movie-field textarea{width:100%;background:#081426;color:#f4f8ff;border:1px solid #355577;border-radius:10px;padding:11px;font:inherit}.movie-field textarea{min-height:100px;resize:vertical}.movie-modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.movie-mode{border:1px solid #304a69;border-radius:13px;padding:13px;background:#0a1628;color:#e7f2ff;text-align:left;cursor:pointer}.movie-mode.active{border-color:#42a2ff;background:#123258;box-shadow:inset 0 0 0 1px #42a2ff44}.movie-mode b{display:block;margin-bottom:5px}.movie-mode small{color:#a6bedb;line-height:1.45}.movie-primary{width:100%;padding:13px;border:0;border-radius:12px;background:linear-gradient(100deg,#167dff,#22b8e8);color:white;font-weight:800;margin-top:14px;cursor:pointer}.movie-primary:disabled{opacity:.55}.movie-progress{height:8px;border-radius:9px;background:#17283b;overflow:hidden;margin:12px 0}.movie-progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,#1686ff,#2dd4bf);transition:width .25s}.movie-status{font-size:13px;color:#afc8e6;white-space:pre-wrap;line-height:1.55;margin-top:10px}.movie-scenes{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-top:12px}.movie-scene{border:1px solid #29425d;background:#091526;border-radius:12px;padding:10px;font-size:12px;color:#b9cee7}.movie-scene video,.movie-scene img{width:100%;border-radius:8px;margin-bottom:8px}.movie-note{font-size:12px;line-height:1.5;color:#92aac6}
+@media(max-width:600px){.movie-modal{padding:8px}.movie-card{padding:15px;margin:8px auto}.movie-grid{grid-template-columns:1fr}.movie-modes{grid-template-columns:1fr}.movie-head h2{font-size:21px}}
 </style></head>
 <body><div class="app"><aside class="sidebar" id="sidebar"><div class="brand"><div class="logo">D</div><span>devora<span style="color:var(--accent2)">.ai</span></span></div><button class="newchat" id="newChat">＋ &nbsp; New chat</button><div class="media-sidebar">
   <div class="side-label">CREATE WITH AI</div>
@@ -540,7 +549,8 @@ body:after{width:260px;height:260px;right:-160px;bottom:8%;background:#31d8ff}
     <p class="studio-option-note">Choose square, landscape, portrait, or widescreen framing.</p>
    </div>
   </div>
-  <label class="studio-label" for="studioPrompt">Describe what you want to create</label>
+  <button type="button" id="movieCreatorBtn" class="movie-launch">🎬 Create a long movie<small>Generate scenes with KIE.ai, then assemble them into one MP4.</small></button>
+   <label class="studio-label" for="studioPrompt">Describe what you want to create</label>
   <textarea id="studioPrompt" maxlength="5000" placeholder="Describe your idea in detail..."></textarea><div class="upload-line"><label class="upload-btn" for="studioFiles">＋ Attach reference files</label><input type="file" id="studioFiles" class="file-input" multiple accept="image/*,audio/*,video/*,.pdf,.txt,.md,.csv,.json" hidden><div id="studioAttachments" class="attachment-list"></div></div>
   <div class="studio-hint" id="studioHint">Tip: include the style, subject, mood, and details you want.</div>
   <div class="studio-voice-row hidden" id="musicVoiceRow">
@@ -554,7 +564,16 @@ body:after{width:260px;height:260px;right:-160px;bottom:8%;background:#31d8ff}
   <div class="studio-result" id="studioResult"></div>
  </div>
 </section></main></div>
-<div id="authModal" class="auth-modal hidden" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+<section id="movieModal" class="movie-modal hidden" aria-modal="true" role="dialog" aria-labelledby="movieTitle"><div class="movie-card">
+  <div class="movie-head"><div><div class="studio-kicker">DEVORA FILM STUDIO</div><h2 id="movieTitle">Long Movie Creator</h2><p class="movie-note">Build a story from multiple KIE.ai generations, then render one MP4.</p></div><button class="movie-close" id="movieClose" type="button">✕ Close</button></div>
+  <div class="movie-field"><label for="moviePrompt">Movie idea</label><textarea id="moviePrompt" placeholder="A sci-fi adventure about a young pilot discovering a hidden city..."></textarea></div>
+  <div class="movie-grid"><div class="movie-field"><label for="movieDuration">Target duration</label><select id="movieDuration"><option value="1">1 minute</option><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="30">30 minutes</option><option value="60" selected>60 minutes</option></select></div><div class="movie-field"><label for="movieAspect">Aspect ratio</label><select id="movieAspect"><option value="16:9">16:9 · YouTube / movie</option><option value="9:16">9:16 · Vertical</option><option value="1:1">1:1 · Square</option></select></div></div>
+  <div class="movie-field"><label>Choose a production mode</label><div class="movie-modes"><button class="movie-mode active" type="button" data-movie-mode="full"><b>🎥 Full AI video</b><small>Generate video clips scene-by-scene. More cinematic, costs more credits, and takes longer.</small></button><button class="movie-mode" type="button" data-movie-mode="smart"><b>⚡ Smart Movie · Budget-friendly</b><small>Generate keyframe images, add cinematic motion, and assemble a longer story more economically.</small></button></div></div>
+  <div class="movie-grid"><div class="movie-field"><label for="movieModel">KIE video model</label><select id="movieModel"><option value="bytedance/seedance-2-5">Seedance 2.5</option><option value="veo-3-1">Veo 3.1</option><option value="kling-3.0/video">Kling 3.0</option><option value="grok-imagine-video-1-5-preview">Grok Imagine Video 1.5</option></select></div><div class="movie-field"><label for="movieScenes">Number of scenes / keyframes</label><select id="movieScenes"><option value="6">6 scenes</option><option value="12" selected>12 scenes</option><option value="20">20 scenes</option><option value="30">30 scenes</option><option value="60">60 scenes</option></select></div></div>
+  <p class="movie-note" id="movieEstimate">A one-hour full AI movie may require hundreds of clips. Smart mode holds keyframes longer and is more economical. Devora credits are separate from KIE provider costs.</p>
+  <button type="button" class="movie-primary" id="movieStart">Generate storyboard & start movie</button><div class="movie-progress"><span id="movieProgressBar"></span></div><div class="movie-status" id="movieStatus" aria-live="polite">Ready when you are. Sign in is required.</div><div id="movieScenesOutput" class="movie-scenes"></div><div id="movieDownload"></div>
+ </div></section>
+ <div id="authModal" class="auth-modal hidden" role="dialog" aria-modal="true" aria-labelledby="authTitle">
   <form id="authForm" class="auth-card">
     <button type="button" id="authClose" class="auth-close" aria-label="Close">×</button>
     <div class="logo" style="margin:0 auto 14px">D</div>
@@ -728,6 +747,50 @@ async function generateMedia(){
   finally{button.disabled=false}
 }
 
+
+ // Long-form movie creation with storyboard, KIE scene generation and MP4 assembly.
+ let movieMode='full',movieBusy=false;
+ const movieCosts={'bytedance/seedance-2-5':25,'veo-3-1':50,'kling-3.0/video':25,'grok-imagine-video-1-5-preview':15};
+ function updateMovieEstimate(){const mins=Number($('#movieDuration').value),scenes=Number($('#movieScenes').value),count=movieMode==='full'?Math.max(scenes,Math.ceil(mins*60/10)):scenes,credits=movieCosts[$('#movieModel').value]||25;$('#movieEstimate').textContent=movieMode==='full'?'Full AI video: up to '+count+' clips for '+mins+' minute(s), assuming roughly 10-second clips. Approximate Devora credits: '+(count*credits)+'. Provider clip limits and costs vary.':'Smart Movie: '+scenes+' keyframes held across '+mins+' minute(s), about '+Math.ceil(mins*60/scenes)+' seconds per image. Much more economical; still images receive a slow cinematic pan/zoom during rendering.'}
+ function openMovieCreator(){if(!currentUser){openAuth();return}$('#moviePrompt').value=$('#studioPrompt').value.trim();$('#movieModal').classList.remove('hidden');$('#movieStatus').textContent='Ready. Choose a mode and start.';updateMovieEstimate()}
+ function closeMovieCreator(){if(movieBusy&&!confirm('Generation is in progress. Closing this panel stops the browser workflow. Close anyway?'))return;$('#movieModal').classList.add('hidden')}
+ $('#movieCreatorBtn').addEventListener('click',openMovieCreator);$('#movieClose').addEventListener('click',closeMovieCreator);
+ document.querySelectorAll('[data-movie-mode]').forEach(b=>b.addEventListener('click',()=>{movieMode=b.dataset.movieMode;document.querySelectorAll('[data-movie-mode]').forEach(x=>x.classList.toggle('active',x===b));updateMovieEstimate()}));
+ ['movieDuration','movieScenes','movieModel'].forEach(id=>$('#'+id).addEventListener('change',updateMovieEstimate));
+ function movieStatus(text,progress){$('#movieStatus').textContent=text;if(progress!=null)$('#movieProgressBar').style.width=Math.max(0,Math.min(100,progress))+'%'}
+ function makeMovieScenePrompt(movie,scene,index,total){return 'Create scene '+(index+1)+' of '+total+' for a continuous feature film. Film concept: '+movie+'. Scene beat: '+scene.description+'. Visual continuity: '+(scene.continuity||'maintain the same characters, wardrobe, locations, lighting and cinematic grade')+'. Shot direction: '+(scene.camera||'cinematic camera movement, clear readable action')+'. Mood: '+(scene.mood||'cinematic')+'. No titles, subtitles, logos, or watermarks. Character continuity guide: '+(scene.characterGuide||'follow the film concept consistently')+'.'}
+ async function callMovieMedia(session,body){const r=await fetch(SUPABASE_URL+'/functions/v1/devora-media',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+session.access_token},body:JSON.stringify(body)});const d=await r.json().catch(()=>({error:'Invalid media response'}));if(!r.ok||d.error)throw new Error(d.error||'KIE media request failed');return d}
+ async function waitMovieTask(session,task,requestId,onProgress){for(let i=0;i<90;i++){await new Promise(r=>setTimeout(r,3000));const d=await callMovieMedia(session,{action:'status',taskId:task.taskId,requestId});if(d.state==='success'&&d.url)return d.url;if(d.state==='fail'||d.state==='failed')throw new Error(d.failMsg||'A scene failed; credits should be refunded.');onProgress(d.progress)}throw new Error('Scene task timed out. Task ID: '+task.taskId)}
+ async function createMovieStoryboard(prompt,count,minutes,mode){const r=await fetch('/api/movie/storyboard',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,count,minutes,mode})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Could not create storyboard');return d.scenes}
+ async function startMovie(){
+  if(movieBusy)return;const prompt=$('#moviePrompt').value.trim(),minutes=Number($('#movieDuration').value),chosenCount=Number($('#movieScenes').value);
+  if(!prompt){movieStatus('Enter a movie idea first.');return}
+  const {data:sd}=await db.auth.getSession(),session=sd?.session;if(!session){openAuth();movieStatus('Sign in before generating a movie.');return}
+  movieBusy=true;const button=$('#movieStart');button.disabled=true;$('#movieScenesOutput').innerHTML='';$('#movieDownload').innerHTML='';
+  try{
+   const count=movieMode==='full'?Math.max(chosenCount,Math.ceil(minutes*60/10)):chosenCount;
+   if(movieMode==='full'&&count>60)throw new Error('This version caps full-video production at 60 clips per run. A true 60-minute AI-only movie can require around 360 ten-second clips. Use Smart Movie for the economical one-hour format, or make the full-video movie in shorter parts.');
+   movieStatus('Writing storyboard with Devora AI…',2);
+   const scenes=await createMovieStoryboard(prompt,count,minutes,movieMode);if(!Array.isArray(scenes)||!scenes.length)throw new Error('The AI returned an empty storyboard.');
+   const rendered=[],ratio=$('#movieAspect').value;
+   for(let i=0;i<scenes.length;i++){
+    const scene=scenes[i],scenePrompt=makeMovieScenePrompt(prompt,scene,i,scenes.length),type=movieMode==='full'?'video':'image',model=movieMode==='full'?$('#movieModel').value:'nano-banana-2';
+    movieStatus('Generating '+(type==='video'?'video clip ':'keyframe image ')+(i+1)+' of '+scenes.length+'…',5+(i/scenes.length)*85);
+    const requestId=crypto.randomUUID(),task=await callMovieMedia(session,{type,model,requestId,prompt:scenePrompt,aspectRatio:ratio,aspect_ratio:ratio});if(task.balance!==undefined)setMediaCreditBalance(task.balance);
+    const url=await waitMovieTask(session,task,requestId,p=>movieStatus('Scene '+(i+1)+' of '+scenes.length+' rendering… '+(p??'')+'%',5+(i/scenes.length)*85));
+    rendered.push({url,mediaType:type,durationSeconds:movieMode==='smart'?Math.max(5,Math.round(minutes*60/scenes.length)):10});
+    const card=document.createElement('div');card.className='movie-scene';const media=type==='video'?document.createElement('video'):document.createElement('img');media.src=url;if(type==='video'){media.controls=true;media.muted=true}else media.alt='Movie scene '+(i+1);card.append(media);const label=document.createElement('div');label.textContent='Scene '+(i+1)+': '+(scene.title||scene.description||'Film scene');card.append(label);$('#movieScenesOutput').append(card);
+   }
+   movieStatus('All scenes ready. Starting MP4 assembly…',91);
+   const ar=await fetch('/api/movie/assemble',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({segments:rendered,aspectRatio:ratio,targetMinutes:minutes,mode:movieMode})}),ad=await ar.json();if(!ar.ok)throw new Error(ad.error||'Could not start MP4 assembly');
+   let final=null;for(let i=0;i<240;i++){await new Promise(r=>setTimeout(r,3000));const sr=await fetch('/api/movie/assemble/'+encodeURIComponent(ad.jobId)),sd=await sr.json();if(sd.state==='completed'){final=sd;break}if(sd.state==='failed')throw new Error(sd.error||'MP4 assembly failed');movieStatus('Rendering final MP4… '+(sd.progress||0)+'%',92+(i/240)*7)}
+   if(!final)throw new Error('Rendering is taking longer than expected. Keep this page open and retry the status check later.');
+   const a=document.createElement('a');a.href=final.url;a.download='devora-movie.mp4';a.className='movie-primary';a.textContent='⬇ Download finished MP4';a.style.display='block';a.style.textAlign='center';a.style.textDecoration='none';$('#movieDownload').append(a);movieStatus('Your MP4 is ready. Full AI mode duration depends on the generated clip lengths; Smart Movie uses the selected keyframe timings.',100);await refreshMediaCredits();
+  }catch(e){movieStatus('Movie creation stopped: '+(e.message||e)+'\nCheck your credit balance and KIE model availability, then retry.');await refreshMediaCredits()}
+  finally{movieBusy=false;button.disabled=false}
+ }
+ $('#movieStart').addEventListener('click',startMovie);
+ 
 // Dedicated creation studio: each media option opens its own full workspace.
 function setStudioMode(mode){
  activeMediaMode=mode;$('#mediaType').value=mode;
@@ -738,7 +801,7 @@ function setStudioMode(mode){
   music:{title:'Create music with your voice',subtitle:'Describe your song by speaking, then generate music from your idea.',placeholder:'Describe the genre, mood, tempo, instruments, vocal style, lyrics theme, and language...',hint:'Tip: include genre, energy, instruments, language, and the vocal style you want.',button:'♫ Generate music'}
  }[mode];
  $('#studioTitle').textContent=info.title;$('#studioSubtitle').textContent=info.subtitle;
- $('#musicVoiceRow').classList.toggle('hidden',mode!=='music');
+ $('#musicVoiceRow').classList.toggle('hidden',mode!=='music');$('#movieCreatorBtn').style.display=mode==='video'?'block':'none';
  $('#visualOptions').classList.toggle('hidden',mode==='music');
  $('#studioPrompt').placeholder=info.placeholder;$('#studioHint').textContent=info.hint;$('#studioGenerate').textContent=info.button;
  document.querySelectorAll('[data-studio-mode]').forEach(b=>b.classList.toggle('active',b.dataset.studioMode===mode));
