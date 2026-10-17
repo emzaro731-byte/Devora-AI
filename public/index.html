@@ -549,7 +549,8 @@ body:after{width:260px;height:260px;right:-160px;bottom:8%;background:#31d8ff}
     <p class="studio-option-note">Choose square, landscape, portrait, or widescreen framing.</p>
    </div>
   </div>
-  <div id="movieCreatorActions" class="movie-launch-group hidden"><button type="button" id="openMovieStudioBtn" class="movie-launch">🎬 Video Studio — Standard Video + Long Movie<small>Use the same video workspace for regular clips, Full AI video, or budget-friendly Smart Movie.</small></button></div>
+  <div class="studio-option-field hidden" id="videoDurationField"><label class="studio-option-heading" for="studioVideoDuration">Video duration</label><select class="studio-select" id="studioVideoDuration"><option value="5">5 seconds</option><option value="10" selected>10 seconds</option><option value="15">15 seconds</option><option value="30">30 seconds</option><option value="60">1 minute</option><option value="120">2 minutes</option><option value="300">5 minutes</option><option value="600">10 minutes</option><option value="900">15 minutes</option><option value="1800">30 minutes</option><option value="2700">45 minutes</option><option value="3600">1 hour</option><option value="5400">1 hour 30 minutes</option><option value="7200">2 hours</option><option value="10800">3 hours</option></select><p class="studio-option-note" id="videoDurationNote">Longer videos use more credits. Long durations are assembled from generated scenes.</p></div>
+   <div id="movieCreatorActions" class="movie-launch-group hidden"><button type="button" id="openMovieStudioBtn" class="movie-launch">🎬 Video Studio — Standard Video + Long Movie<small>Use the same video workspace for regular clips, Full AI video, or budget-friendly Smart Movie.</small></button></div>
    <label class="studio-label" for="studioPrompt">Describe what you want to create</label>
   <textarea id="studioPrompt" maxlength="5000" placeholder="Describe your idea in detail..."></textarea><div class="upload-line"><label class="upload-btn" for="studioFiles">＋ Attach reference files</label><input type="file" id="studioFiles" class="file-input" multiple accept="image/*,audio/*,video/*,.pdf,.txt,.md,.csv,.json" hidden><div id="studioAttachments" class="attachment-list"></div></div>
   <div class="studio-hint" id="studioHint">Tip: include the style, subject, mood, and details you want.</div>
@@ -670,8 +671,8 @@ const DEVORA_KIE_MODELS = {
 
 const DEVORA_CREDIT_COSTS = {'gpt-image-2-text-to-image':5,'nano-banana-2-1':6,'nano-banana-2':6,'nano-banana-pro':10,'grok-imagine-image-2-0/text-to-image':5,'grok-imagine/text-to-image':4,'bytedance/seedream-v4-text-to-image':5,'flux-2/pro-text-to-image':7,'flux-2/flex-text-to-image':5,'qwen2-1/text-to-image':4,'bytedance/seedance-2-5':25,'veo-3-1':50,'kling-3.0/video':25,'grok-imagine-video-1-5-preview':15,'V6':10,'V6_MINI':7,'V6_WILD':12};
 let mediaCreditBalance = null;
-function selectedMediaCreditCost(){return DEVORA_CREDIT_COSTS[$('#studioModel')?.value]||0}
-function updateMediaCreditCost(){const cost=selectedMediaCreditCost();const label=$('#mediaCreditCost');if(label)label.textContent=cost?cost+' credits':'— credits'}
+function selectedMediaCreditCost(){const base=DEVORA_CREDIT_COSTS[$('#studioModel')?.value]||0;if(activeMediaMode!=='video')return base;const seconds=Number($('#studioVideoDuration')?.value)||10;return Math.ceil(base*Math.max(1,seconds/10))}
+function updateMediaCreditCost(){const cost=selectedMediaCreditCost();const label=$('#mediaCreditCost');if(label)label.textContent=cost?cost+' credits estimated':'— credits';const note=$('#videoDurationNote');if(note&&activeMediaMode==='video'){const seconds=Number($('#studioVideoDuration')?.value)||10;note.textContent=seconds<=10?'Short clip selected. Longer durations use more credits.':'Estimated cost scales with duration. Long videos open the movie workflow to generate scenes and assemble one MP4.'}}
 function setMediaCreditBalance(value){if(value===null||value===undefined)return;mediaCreditBalance=Number(value);const label=$('#mediaCreditBalance');if(label)label.textContent=mediaCreditBalance+' credits'}
 async function refreshMediaCredits(){
  const label=$('#mediaCreditBalance');if(!label)return;
@@ -800,7 +801,7 @@ function setStudioMode(mode){
   music:{title:'Create music with your voice',subtitle:'Describe your song by speaking, then generate music from your idea.',placeholder:'Describe the genre, mood, tempo, instruments, vocal style, lyrics theme, and language...',hint:'Tip: include genre, energy, instruments, language, and the vocal style you want.',button:'♫ Generate music'}
  }[mode];
  $('#studioTitle').textContent=info.title;$('#studioSubtitle').textContent=info.subtitle;
- $('#musicVoiceRow').classList.toggle('hidden',mode!=='music');$('#movieCreatorActions').classList.toggle('hidden',mode!=='video');
+ $('#musicVoiceRow').classList.toggle('hidden',mode!=='music');$('#movieCreatorActions').classList.toggle('hidden',mode!=='video');$('#videoDurationField').classList.toggle('hidden',mode!=='video');
  $('#visualOptions').classList.toggle('hidden',mode==='music');
  $('#studioPrompt').placeholder=info.placeholder;$('#studioHint').textContent=info.hint;$('#studioGenerate').textContent=info.button;
  document.querySelectorAll('[data-studio-mode]').forEach(b=>b.classList.toggle('active',b.dataset.studioMode===mode));
@@ -858,7 +859,7 @@ musicRecordBtn.addEventListener('click',async()=>{
  }catch(e){musicVoiceHelp.textContent='Microphone permission was denied or unavailable. Allow microphone access and try again.'}
 });
 
-$('#studioModel').addEventListener('change',updateMediaCreditCost);
+$('#studioModel').addEventListener('change',updateMediaCreditCost);$('#studioVideoDuration').addEventListener('change',updateMediaCreditCost);
 $('#mediaCreditRefresh').addEventListener('click',refreshMediaCredits);
 $('#studioGenerate').addEventListener('click',generateMedia);
 $('#studioPrompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();generateMedia()}});
