@@ -34,10 +34,12 @@ app.post('/api/movie/storyboard', async (req,res) => {
     if(!key)return res.status(503).json({error:'GROQ_API_KEY is required to write a movie storyboard.'});
     const prompt=typeof req.body.prompt==='string'?req.body.prompt.trim().slice(0,4000):'';
     const count=Math.max(1,Math.min(60,Number.parseInt(req.body.count,10)||12));
+    const offset=Math.max(0,Math.min(1079,Number.parseInt(req.body.offset,10)||0));
+    const total=Math.max(count,Math.min(1080,Number.parseInt(req.body.total,10)||count));
     const minutes=Math.max(1,Math.min(180,Number.parseInt(req.body.minutes,10)||1));
     const mode=req.body.mode==='smart'?'smart':'full';
     if(!prompt)return res.status(400).json({error:'Enter a movie idea.'});
-    const response=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.GROQ_MODEL||'openai/gpt-oss-120b',temperature:0.7,max_tokens:Math.min(8000,500+count*100),response_format:{type:'json_object'},messages:[{role:'system',content:'You are a film screenwriter and storyboard artist. Return valid JSON only, shaped as {"scenes":[{"title":"short title","description":"visual action for this scene","continuity":"details that should stay consistent","camera":"shot and camera movement","mood":"mood"}]}. Make scenes sequential, visually distinct, coherent, and keep characters, wardrobe and locations consistent. No markdown.'},{role:'user',content:'Create exactly '+count+' storyboard scenes for this movie concept: '+prompt+'. Target duration: '+minutes+' minutes. Production mode: '+mode+'. Each scene must be visually producible as one short clip or one keyframe image, with a beginning, progression, climax and ending.'}]})});
+    const response=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.GROQ_MODEL||'openai/gpt-oss-120b',temperature:0.7,max_tokens:Math.min(8000,500+count*100),response_format:{type:'json_object'},messages:[{role:'system',content:'You are a film screenwriter and storyboard artist. Return valid JSON only, shaped as {"scenes":[{"title":"short title","description":"visual action for this scene","continuity":"details that should stay consistent","camera":"shot and camera movement","mood":"mood"}]}. Make scenes sequential, visually distinct, coherent, and keep characters, wardrobe and locations consistent. No markdown.'},{role:'user',content:'Create exactly '+count+' storyboard scenes for this movie concept: '+prompt+'. These are scenes '+(offset+1)+' through '+(offset+count)+' of '+total+' total scenes for a '+minutes+' minute film. Production mode: '+mode+'. Keep this batch consistent with a single continuous film and avoid repeating earlier generic beats. Scene numbers should follow the requested global range. Each scene must be visually producible as one short clip or one keyframe image.'}]})});
     const data=await response.json();if(!response.ok)return res.status(response.status).json({error:data?.error?.message||'Storyboard model request failed.'});
     let parsed;try{parsed=JSON.parse(data.choices?.[0]?.message?.content||'{}')}catch(_){return res.status(502).json({error:'AI returned an invalid storyboard. Please retry.'})}
     if(!Array.isArray(parsed.scenes)||!parsed.scenes.length)return res.status(502).json({error:'AI did not return storyboard scenes.'});
@@ -51,7 +53,7 @@ app.post('/api/movie/assemble',async(req,res)=>{
  try{
   if(!ffmpegPath)return res.status(503).json({error:'The MP4 renderer is not installed. Redeploy after ffmpeg-static is added.'});
   const segments=Array.isArray(req.body.segments)?req.body.segments:[];
-  if(!segments.length||segments.length>360)return res.status(400).json({error:'Provide between 1 and 360 generated scenes.'});
+  if(!segments.length||segments.length>1080)return res.status(400).json({error:'Provide between 1 and 1,080 generated scenes.'});
   for(const s of segments)if(!s||!safeMovieUrl(s.url)||!['image','video'].includes(s.mediaType))return res.status(400).json({error:'A scene URL or media type is invalid.'});
   const id=crypto.randomUUID(),dir=path.join(os.tmpdir(),'devora-movie-'+id),publicDir=path.join(__dirname,'public','movie-renders');await fs.promises.mkdir(dir,{recursive:true});await fs.promises.mkdir(publicDir,{recursive:true});
   const job={state:'queued',progress:0,url:null,error:null,createdAt:Date.now()};movieJobs.set(id,job);res.status(202).json({jobId:id,state:'queued'});
@@ -67,7 +69,7 @@ app.post('/api/movie/assemble',async(req,res)=>{
      await runFfmpeg(['-y','-loop','1','-i',input,'-t',String(dur),'-vf',vf,'-r','24','-c:v','libx264','-preset','ultrafast','-movflags','+faststart',output]);
     }else{
      const ratio=String(req.body.aspectRatio||'16:9'),w=ratio==='9:16'?720:1280,h=ratio==='9:16'?1280:ratio==='1:1'?720:720;
-     await runFfmpeg(['-y','-i',input,'-vf','scale='+w+':'+h+':force_original_aspect_ratio=decrease,pad='+w+':'+h+':(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24,format=yuv420p','-an','-c:v','libx264','-preset','ultrafast','-movflags','+faststart',output]);
+     const clipDuration=Math.max(1,Math.min(3600,Number(s.durationSeconds)||10));await runFfmpeg(['-y','-i',input,'-t',String(clipDuration),'-vf','scale='+w+':'+h+':force_original_aspect_ratio=decrease,pad='+w+':'+h+':(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24,format=yuv420p','-an','-c:v','libx264','-preset','ultrafast','-movflags','+faststart',output]);
     }
     list.push(output);job.progress=Math.round(((i+1)/segments.length)*70);
    }
