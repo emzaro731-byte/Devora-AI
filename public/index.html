@@ -213,6 +213,17 @@ body{background:radial-gradient(ellipse at 50% -25%,#123d75 0,transparent 45%),r
 .studio-voice-btn:hover{background:#16345a;border-color:#3b95e9}
 .studio-voice-btn.recording{background:#4b1724;border-color:#ff617e;color:#fff}
 .studio-voice-help{font-size:11px;color:#8399b8;flex:1;min-width:140px}
+
+.studio-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}
+.studio-option-field{min-width:0}
+.studio-select{width:100%;background:#080e19;color:#eaf3ff;border:1px solid #2d405e;border-radius:12px;padding:12px 11px;font:13px system-ui,sans-serif;outline:none}
+.studio-select:focus{border-color:#398de7;box-shadow:0 0 0 3px #278bff18}
+.studio-option-note{font-size:11px;color:#8195b3;margin:7px 1px 0;line-height:1.45}
+.studio-option-heading{font-size:12px;font-weight:700;color:#dbe8fa;display:block;margin:0 0 8px}
+.studio-option-chips{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 2px}
+.studio-chip{border:1px solid #2a3c57;border-radius:999px;background:#0b1422;color:#a9bdd8;padding:6px 10px;font-size:11px}
+.studio-chip.active{border-color:#348de5;background:#12345b;color:#fff}
+@media(max-width:500px){.studio-options{grid-template-columns:1fr;gap:12px}}
 </style></head>
 <body><div class="app"><aside class="sidebar" id="sidebar"><div class="brand"><div class="logo">D</div><span>devora<span style="color:var(--accent2)">.ai</span></span></div><button class="newchat" id="newChat">＋ &nbsp; New chat</button><div class="media-sidebar">
   <div class="side-label">CREATE WITH AI</div>
@@ -238,6 +249,23 @@ body{background:radial-gradient(ellipse at 50% -25%,#123d75 0,transparent 45%),r
    <button type="button" class="studio-tab active" data-studio-mode="image"><span>✦</span>Image</button>
    <button type="button" class="studio-tab" data-studio-mode="video"><span>▶</span>Video</button>
    <button type="button" class="studio-tab" data-studio-mode="music"><span>♫</span>Music</button>
+  </div>
+  <div class="studio-options" id="visualOptions">
+   <div class="studio-option-field">
+    <label class="studio-option-heading" for="studioStyle">Visual style</label>
+    <select class="studio-select" id="studioStyle">
+     <option value="auto">Auto / choose for me</option>
+     <option value="photorealistic">Photorealistic</option><option value="cinematic">Cinematic</option><option value="anime">Anime</option><option value="3d-render">3D render</option><option value="digital-art">Digital art</option><option value="illustration">Illustration</option><option value="watercolor">Watercolor</option><option value="oil-painting">Oil painting</option><option value="comic-book">Comic book</option><option value="fantasy-art">Fantasy art</option><option value="cyberpunk">Cyberpunk</option><option value="pixel-art">Pixel art</option><option value="minimalist">Minimalist</option><option value="product-photography">Product photography</option><option value="fashion-editorial">Fashion editorial</option><option value="vintage-film">Vintage film</option><option value="clay-animation">Clay animation</option><option value="documentary">Documentary</option><option value="music-video">Music video</option><option value="architectural">Architectural visualization</option>
+    </select>
+    <p class="studio-option-note">Choose a look for your image or video.</p>
+   </div>
+   <div class="studio-option-field">
+    <label class="studio-option-heading" for="studioRatio">Aspect ratio</label>
+    <select class="studio-select" id="studioRatio">
+     <option value="auto">Auto / provider default</option><option value="1:1">1:1 · Square</option><option value="16:9">16:9 · Landscape / YouTube</option><option value="9:16">9:16 · Portrait / Reels / TikTok</option><option value="4:3">4:3 · Classic landscape</option><option value="3:4">3:4 · Portrait</option><option value="3:2">3:2 · Photo landscape</option><option value="2:3">2:3 · Photo portrait</option><option value="21:9">21:9 · Ultra-wide</option>
+    </select>
+    <p class="studio-option-note">Choose square, landscape, portrait, or widescreen framing.</p>
+   </div>
   </div>
   <label class="studio-label" for="studioPrompt">Describe what you want to create</label>
   <textarea id="studioPrompt" maxlength="5000" placeholder="Describe your idea in detail..."></textarea>
@@ -318,7 +346,10 @@ db.auth.onAuthStateChange(()=>{setTimeout(()=>refreshAccount(),0)});
 async function generateMedia(){
   const inStudio=studioOpen;
   const type=inStudio?activeMediaMode:$('#mediaType').value;
-  const prompt=(inStudio?$('#studioPrompt'):$('#mediaPrompt')).value.trim();
+  const basePrompt=(inStudio?$('#studioPrompt'):$('#mediaPrompt')).value.trim();
+  const visualStyle=inStudio&&type!=='music'?$('#studioStyle').value:'auto';
+  const aspectRatio=inStudio&&type!=='music'?$('#studioRatio').value:'auto';
+  const prompt=basePrompt;
   const button=inStudio?$('#studioGenerate'):$('#mediaGenerate');
   const status=inStudio?$('#studioStatus'):$('#mediaStatus');
   const result=inStudio?$('#studioResult'):$('#mediaResult');
@@ -334,7 +365,10 @@ async function generateMedia(){
       if(!response.ok||data.error)throw new Error(data.error||'Media generation request failed.');
       return data;
     };
-    const task=await call({type,prompt});
+    const styleText=visualStyle!=='auto'?'Visual style: '+visualStyle.replaceAll('-',' ')+'. ':'';
+    const ratioText=aspectRatio!=='auto'?'Aspect ratio: '+aspectRatio+'. ':'';
+    const enhancedPrompt=(styleText+ratioText+prompt).trim();
+    const task=await call({type,prompt:enhancedPrompt,style:visualStyle,aspectRatio:aspectRatio,aspect_ratio:aspectRatio});
     status.textContent='Generation queued. Waiting for KIE.ai…';
     let finalData=null;
     for(let i=0;i<90;i++){
@@ -366,10 +400,13 @@ function setStudioMode(mode){
  }[mode];
  $('#studioTitle').textContent=info.title;$('#studioSubtitle').textContent=info.subtitle;
  $('#musicVoiceRow').classList.toggle('hidden',mode!=='music');
+ $('#visualOptions').classList.toggle('hidden',mode==='music');
  $('#studioPrompt').placeholder=info.placeholder;$('#studioHint').textContent=info.hint;$('#studioGenerate').textContent=info.button;
  document.querySelectorAll('[data-studio-mode]').forEach(b=>b.classList.toggle('active',b.dataset.studioMode===mode));
  document.querySelectorAll('[data-media-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mediaMode===mode));
  $('#mediaType').value=mode;
+ if(mode==='image'){$('#studioStyle').value='auto';$('#studioRatio').value='1:1'}
+ else if(mode==='video'){$('#studioStyle').value='cinematic';$('#studioRatio').value='16:9'}
 }
 function openStudio(mode){
  studioOpen=true;setStudioMode(mode);
