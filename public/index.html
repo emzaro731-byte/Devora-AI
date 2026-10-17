@@ -207,6 +207,12 @@ body{background:radial-gradient(ellipse at 50% -25%,#123d75 0,transparent 45%),r
 .studio-status{font-size:12px;color:#9eb2ce;margin:14px 2px;min-height:20px}
 .studio-result{margin-top:16px;overflow-wrap:anywhere}.studio-result img,.studio-result video{display:block;width:auto;max-width:100%;max-height:520px;border-radius:16px;border:1px solid #31415c}.studio-result audio{display:block;width:100%;margin:10px 0}.studio-result a{display:inline-block;color:#83d8ff;margin:10px 0}
 @media(max-width:680px){.media-studio{padding:14px 10px 22px}.studio-inner{padding:18px 14px;border-radius:18px}.studio-tabs{gap:6px}.studio-tab{font-size:12px;padding:11px 4px}.studio-tab span{font-size:19px}#studioPrompt{min-height:125px}}
+
+.studio-voice-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0 16px}
+.studio-voice-btn{border:1px solid #31577c;background:#10213a;color:#dceeff;border-radius:11px;padding:10px 13px;font-weight:650;font-size:12px;display:inline-flex;align-items:center;gap:8px}
+.studio-voice-btn:hover{background:#16345a;border-color:#3b95e9}
+.studio-voice-btn.recording{background:#4b1724;border-color:#ff617e;color:#fff}
+.studio-voice-help{font-size:11px;color:#8399b8;flex:1;min-width:140px}
 </style></head>
 <body><div class="app"><aside class="sidebar" id="sidebar"><div class="brand"><div class="logo">D</div><span>devora<span style="color:var(--accent2)">.ai</span></span></div><button class="newchat" id="newChat">＋ &nbsp; New chat</button><div class="media-sidebar">
   <div class="side-label">CREATE WITH AI</div>
@@ -236,6 +242,12 @@ body{background:radial-gradient(ellipse at 50% -25%,#123d75 0,transparent 45%),r
   <label class="studio-label" for="studioPrompt">Describe what you want to create</label>
   <textarea id="studioPrompt" maxlength="5000" placeholder="Describe your idea in detail..."></textarea>
   <div class="studio-hint" id="studioHint">Tip: include the style, subject, mood, and details you want.</div>
+  <div class="studio-voice-row hidden" id="musicVoiceRow">
+   <button type="button" class="studio-voice-btn" id="musicSpeakBtn">🎙️ Speak your idea</button>
+   <button type="button" class="studio-voice-btn" id="musicRecordBtn">● Record a voice note</button>
+   <span class="studio-voice-help" id="musicVoiceHelp">Describe your song aloud or record a short vocal reference for your own playback.</span>
+   <audio id="musicVoicePreview" class="hidden" controls></audio>
+  </div>
   <button type="button" class="studio-generate" id="studioGenerate">✦ Generate image</button>
   <div class="studio-status" id="studioStatus" aria-live="polite">Sign in to generate with KIE.ai.</div>
   <div class="studio-result" id="studioResult"></div>
@@ -350,9 +362,10 @@ function setStudioMode(mode){
  const info={
   image:{title:'Create an image',subtitle:'Turn your idea into a polished visual with AI.',placeholder:'Describe the subject, art style, colors, lighting, and composition...',hint:'Tip: include the style, subject, mood, and visual details.',button:'✦ Generate image'},
   video:{title:'Create a video',subtitle:'Bring a scene, story, or concept to life with AI video.',placeholder:'Describe the scene, camera movement, action, setting, and visual style...',hint:'Tip: explain what happens in the scene and how the camera should move.',button:'▶ Generate video'},
-  music:{title:'Create music',subtitle:'Create a soundtrack from your idea, mood, genre, and sound.',placeholder:'Describe the genre, mood, tempo, instruments, vocal style, and theme...',hint:'Tip: include genre, energy, instruments, language, and whether you want vocals.',button:'♫ Generate music'}
+  music:{title:'Create music with your voice',subtitle:'Describe your song by speaking, then generate music from your idea.',placeholder:'Describe the genre, mood, tempo, instruments, vocal style, lyrics theme, and language...',hint:'Tip: include genre, energy, instruments, language, and the vocal style you want.',button:'♫ Generate music'}
  }[mode];
  $('#studioTitle').textContent=info.title;$('#studioSubtitle').textContent=info.subtitle;
+ $('#musicVoiceRow').classList.toggle('hidden',mode!=='music');
  $('#studioPrompt').placeholder=info.placeholder;$('#studioHint').textContent=info.hint;$('#studioGenerate').textContent=info.button;
  document.querySelectorAll('[data-studio-mode]').forEach(b=>b.classList.toggle('active',b.dataset.studioMode===mode));
  document.querySelectorAll('[data-media-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mediaMode===mode));
@@ -372,6 +385,41 @@ function closeStudio(){
 document.querySelectorAll('[data-media-mode]').forEach(button=>button.addEventListener('click',()=>openStudio(button.dataset.mediaMode)));
 document.querySelectorAll('[data-studio-mode]').forEach(button=>button.addEventListener('click',()=>setStudioMode(button.dataset.studioMode)));
 $('#studioBack').addEventListener('click',closeStudio);
+
+// Voice input for the music studio. Speech recognition fills the prompt; recording
+// is a local preview/reference only and is not uploaded to KIE.ai by this API.
+let musicRecognition=null,musicRecorder=null,musicRecordChunks=[],musicVoiceUrl=null;
+const musicSpeakBtn=$('#musicSpeakBtn'),musicRecordBtn=$('#musicRecordBtn'),musicVoiceHelp=$('#musicVoiceHelp');
+musicSpeakBtn.addEventListener('click',()=>{
+ const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SpeechRecognition){musicVoiceHelp.textContent='Voice dictation is not supported in this browser. Try Chrome on Android or type your idea.';return}
+ if(musicRecognition){musicRecognition.stop();musicRecognition=null;musicSpeakBtn.classList.remove('recording');musicSpeakBtn.textContent='🎙️ Speak your idea';return}
+ musicRecognition=new SpeechRecognition();musicRecognition.lang='en-NG';musicRecognition.continuous=true;musicRecognition.interimResults=true;
+ let finalText='';
+ musicRecognition.onstart=()=>{musicSpeakBtn.classList.add('recording');musicSpeakBtn.textContent='■ Stop speaking';musicVoiceHelp.textContent='Listening… speak your song idea clearly.'};
+ musicRecognition.onresult=e=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const text=e.results[i][0].transcript;if(e.results[i].isFinal)finalText+=text+' ';else interim+=text}$('#studioPrompt').value=(finalText+interim).trim()};
+ musicRecognition.onerror=e=>{musicVoiceHelp.textContent=e.error==='not-allowed'?'Allow microphone access in your browser settings.':'Voice input stopped: '+e.error};
+ musicRecognition.onend=()=>{musicSpeakBtn.classList.remove('recording');musicSpeakBtn.textContent='🎙️ Speak your idea';musicVoiceHelp.textContent=$('#studioPrompt').value.trim()?'Voice idea added to your prompt. You can edit it before generating.':'Tap “Speak your idea” and describe your song.';musicRecognition=null};
+ try{musicRecognition.start()}catch(e){musicVoiceHelp.textContent='Could not start microphone. Check browser microphone permission.';musicRecognition=null}
+});
+musicRecordBtn.addEventListener('click',async()=>{
+ if(musicRecorder&&musicRecorder.state==='recording'){musicRecorder.stop();return}
+ if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){musicVoiceHelp.textContent='Audio recording is not supported by this browser. Try Chrome on Android.';return}
+ try{
+  const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+  musicRecordChunks=[];musicRecorder=new MediaRecorder(stream);
+  musicRecorder.ondataavailable=e=>{if(e.data.size)musicRecordChunks.push(e.data)};
+  musicRecorder.onstop=()=>{
+   const blob=new Blob(musicRecordChunks,{type:musicRecorder.mimeType||'audio/webm'});
+   if(musicVoiceUrl)URL.revokeObjectURL(musicVoiceUrl);musicVoiceUrl=URL.createObjectURL(blob);
+   $('#musicVoicePreview').src=musicVoiceUrl;$('#musicVoicePreview').classList.remove('hidden');
+   stream.getTracks().forEach(t=>t.stop());musicRecordBtn.classList.remove('recording');musicRecordBtn.textContent='● Record a voice note';
+   musicVoiceHelp.textContent='Voice note recorded for local preview. This current KIE.ai connection does not accept vocal-reference audio yet.';
+  };
+  musicRecorder.start();musicRecordBtn.classList.add('recording');musicRecordBtn.textContent='■ Stop recording';musicVoiceHelp.textContent='Recording… sing or speak, then tap Stop recording.';
+ }catch(e){musicVoiceHelp.textContent='Microphone permission was denied or unavailable. Allow microphone access and try again.'}
+});
+
 $('#studioGenerate').addEventListener('click',generateMedia);
 $('#studioPrompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();generateMedia()}});
 $('#mediaGenerate').addEventListener('click',generateMedia);
