@@ -42,6 +42,49 @@ jobs:
           flutter pub add permission_handler:11.3.1
           flutter pub add flutter_local_notifications
 
+      - name: Enable Android core library desugaring
+        working-directory: flutter_app
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f android/app/build.gradle.kts ]; then
+            cat >> android/app/build.gradle.kts <<'GRADLE'
+
+          // Required by flutter_local_notifications.
+          android {
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+                  isCoreLibraryDesugaringEnabled = true
+              }
+          }
+
+          dependencies {
+              coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+          }
+          GRADLE
+          elif [ -f android/app/build.gradle ]; then
+            cat >> android/app/build.gradle <<'GRADLE'
+
+          // Required by flutter_local_notifications.
+          android {
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+                  coreLibraryDesugaringEnabled true
+              }
+          }
+
+          dependencies {
+              coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
+          }
+          GRADLE
+          else
+            echo "Could not find app Gradle build file."
+            exit 1
+          fi
+          echo "Core library desugaring configured."
+
       - name: Create Devora-AI app screen
         working-directory: flutter_app
         run: |
