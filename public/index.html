@@ -796,6 +796,7 @@ async function generateMedia(){
  
 // Dedicated creation studio: each media option opens its own full workspace.
 function setStudioMode(mode){
+ if(!['image','video','music'].includes(mode))return;
  activeMediaMode=mode;$('#mediaType').value=mode;
  populateKieModels(mode);
  const info={
@@ -814,6 +815,7 @@ function setStudioMode(mode){
  else if(mode==='video'){$('#studioStyle').value='cinematic';$('#studioRatio').value='16:9'}
 }
 function openStudio(mode){
+ if(!['image','video','music'].includes(mode))return;
  studioOpen=true;setStudioMode(mode);
  $('#content').classList.add('hidden');$('.composer-wrap').classList.add('hidden');
  $('#mediaStudio').classList.remove('hidden');$('#sidebar').classList.remove('open');
@@ -864,8 +866,9 @@ musicRecordBtn.addEventListener('click',async()=>{
 
 $('#studioModel').addEventListener('change',updateMediaCreditCost);$('#studioVideoDuration').addEventListener('change',updateMediaCreditCost);
 $('#mediaCreditRefresh').addEventListener('click',refreshMediaCredits);
-$('#studioGenerate').addEventListener('click',()=>{if(activeMediaMode==='video'&&(Number($('#studioVideoDuration').value)||10)>10){if(!currentUser){openAuth();return}$('#moviePrompt').value=$('#studioPrompt').value.trim();$('#movieDurationCustom').value=String(Number($('#studioVideoDuration').value));$('#movieDuration').value='5';$('#movieModal').classList.remove('hidden');movieMode='full';document.querySelectorAll('[data-movie-mode]').forEach(x=>x.classList.toggle('active',x.dataset.movieMode==='full'));updateMovieEstimate();return}generateMedia()});
-$('#studioPrompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();generateMedia()}});
+function handleStudioGenerate(){if(activeMediaMode==='video'&&(Number($('#studioVideoDuration').value)||10)>10){if(!currentUser){openAuth();return}$('#moviePrompt').value=$('#studioPrompt').value.trim();$('#movieDurationCustom').value=String(Number($('#studioVideoDuration').value));$('#movieDuration').value='5';$('#movieModal').classList.remove('hidden');movieMode='full';document.querySelectorAll('[data-movie-mode]').forEach(x=>x.classList.toggle('active',x.dataset.movieMode==='full'));updateMovieEstimate();return}generateMedia()}
+$('#studioGenerate').addEventListener('click',handleStudioGenerate);
+$('#studioPrompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleStudioGenerate()}});
 $('#mediaGenerate').addEventListener('click',generateMedia);
 $('#mediaPrompt').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();generateMedia()}});
 
