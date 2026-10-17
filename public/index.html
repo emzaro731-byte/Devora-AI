@@ -186,6 +186,27 @@ body{background:radial-gradient(ellipse at 50% -25%,#123d75 0,transparent 45%),r
 .code-block pre{margin:0;padding:15px;overflow:auto;max-width:100%;font:13px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace;color:#dbe8ff;white-space:pre}
 
 .message-body{flex:1;min-width:0}.message-body>.bubble{width:100%}.answer-actions{display:flex;align-items:center;gap:7px;margin-top:10px;min-height:28px;color:#8290aa}.answer-actions button{border:1px solid transparent;background:transparent;color:#8793ad;border-radius:8px;padding:5px 8px;font-size:11px;transition:background .15s,border-color .15s,color .15s}.answer-actions button:hover{background:#17243a;border-color:#2c4567;color:#e4efff}.answer-actions button.selected{background:#123b5a;border-color:#258bd0;color:#bde9ff}.answer-actions button:disabled{cursor:default;opacity:.9}.answer-feedback-note{font-size:11px;color:#7f91ad}@media(max-width:680px){.answer-actions{gap:4px}.answer-actions button{padding:6px;font-size:10px}}
+
+/* Dedicated image, video and music creation studio */
+.media-studio{flex:1;min-height:0;overflow:auto;padding:clamp(22px,5vw,56px);display:flex;justify-content:center;align-items:flex-start;background:radial-gradient(ellipse at 50% 0%,#102c50aa,transparent 55%)}
+.studio-inner{width:min(100%,850px);padding:clamp(18px,4vw,34px);border:1px solid #2a4262;background:linear-gradient(145deg,#0d1728eF,#080e19f5);border-radius:24px;box-shadow:0 22px 70px #0004}
+.studio-back{border:1px solid #31415c;background:#111b2c;color:#c8d9f1;border-radius:10px;padding:8px 12px;margin-bottom:24px}
+.studio-kicker{font-size:11px;letter-spacing:.15em;color:#72baff;font-weight:800}
+.studio-inner h1{font-size:clamp(30px,5vw,44px);letter-spacing:-.05em;line-height:1.12;margin:10px 0}
+.studio-subtitle{color:#9aaecb;margin:0 0 26px}
+.studio-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:0 0 24px}
+.studio-tab{border:1px solid #2a3c57;background:#0c1422;color:#a9b9d1;border-radius:13px;padding:13px 8px;font-weight:650}
+.studio-tab.active{color:#fff;border-color:#348de5;background:linear-gradient(135deg,#12345b,#102039);box-shadow:inset 0 0 0 1px #3e9bff22}
+.studio-tab span{display:block;font-size:21px;margin-bottom:4px}
+.studio-label{display:block;color:#dbe8fa;font-size:13px;font-weight:650;margin:0 0 9px}
+#studioPrompt{display:block;width:100%;min-height:145px;resize:vertical;background:#080e19;border:1px solid #2d405e;border-radius:14px;padding:15px;color:#f0f6ff;outline:none;font:14px/1.6 system-ui,sans-serif}
+#studioPrompt:focus{border-color:#398de7;box-shadow:0 0 0 3px #278bff18}
+.studio-hint{font-size:12px;color:#8195b3;margin:8px 0 17px}
+.studio-generate{width:100%;border:0;border-radius:13px;padding:14px;background:linear-gradient(110deg,#278bff,#27bfe0);color:white;font-weight:750;font-size:14px}
+.studio-generate:disabled{opacity:.55}
+.studio-status{font-size:12px;color:#9eb2ce;margin:14px 2px;min-height:20px}
+.studio-result{margin-top:16px;overflow-wrap:anywhere}.studio-result img,.studio-result video{display:block;width:auto;max-width:100%;max-height:520px;border-radius:16px;border:1px solid #31415c}.studio-result audio{display:block;width:100%;margin:10px 0}.studio-result a{display:inline-block;color:#83d8ff;margin:10px 0}
+@media(max-width:680px){.media-studio{padding:14px 10px 22px}.studio-inner{padding:18px 14px;border-radius:18px}.studio-tabs{gap:6px}.studio-tab{font-size:12px;padding:11px 4px}.studio-tab span{font-size:19px}#studioPrompt{min-height:125px}}
 </style></head>
 <body><div class="app"><aside class="sidebar" id="sidebar"><div class="brand"><div class="logo">D</div><span>devora<span style="color:var(--accent2)">.ai</span></span></div><button class="newchat" id="newChat">＋ &nbsp; New chat</button><div class="media-sidebar">
   <div class="side-label">CREATE WITH AI</div>
@@ -200,7 +221,26 @@ body{background:radial-gradient(ellipse at 50% -25%,#123d75 0,transparent 45%),r
   <button class="media-generate" id="mediaGenerate"><span>✦</span> Generate</button>
   <div class="media-status" id="mediaStatus">Powered by KIE.ai. Sign in to create.</div>
   <div class="media-result" id="mediaResult"></div>
-</div><div class="side-label">YOUR CHATS</div><div class="history" id="history">Your conversations will appear here.</div><div class="profile" id="sidebarProfile"><div class="avatar">D</div><div class="profile-copy" style="min-width:0;flex:1"><b id="profileName">Devora-AI</b><div id="profileStatus" style="font-size:12px;color:var(--muted)">AI assistant</div></div><button class="sideitem" id="accountBtn" type="button" style="padding:8px 10px;font-size:12px;white-space:nowrap">Sign in</button></div></aside><main class="main"><header class="topbar"><div style="display:flex;align-items:center;gap:10px"><button class="iconbtn mobile-menu" id="menu">☰</button><div class="top-title">Devora-AI <span style="color:var(--muted);font-weight:400">⌄</span></div></div><div class="top-actions"></div></header><section class="content" id="content"><div class="welcome" id="welcome"><div style="display:inline-flex;align-items:center;gap:8px;padding:6px 11px;border:1px solid #4d4377;border-radius:999px;color:#c4b6ff;background:#8b70ff12;font-size:11px;letter-spacing:.04em;margin-bottom:22px"><span style="width:6px;height:6px;border-radius:50%;background:#37dcc5;box-shadow:0 0 12px #37dcc5"></span> YOUR CREATIVE AI WORKSPACE</div><h1>Imagine it.<br>Create it with AI.</h1><p>Chat, explore ideas, write code, and generate images, videos and music.</p><div class="suggestions"><button class="suggestion" data-prompt="Explain a difficult topic in simple terms"><b>✦ Learn something</b><span>Explain any topic simply</span></button><button class="suggestion" data-prompt="Help me write a professional email"><b>✎ Write anything</b><span>Draft, rewrite, or improve text</span></button><button class="suggestion" data-prompt="Help me understand or write code"><b>⌘ Coding help</b><span>Understand, write, and debug code</span></button><button class="suggestion" data-prompt="Give me creative ideas for a new project"><b>◎ Brainstorm ideas</b><span>Explore ideas and possibilities</span></button></div></div><div class="messages hidden" id="messages"></div></section><div class="composer-wrap"><form class="composer" id="form"><textarea id="input" rows="1" placeholder="Message Devora-AI..." aria-label="Message Devora-AI"></textarea><button class="send" id="send" aria-label="Send message">↑</button></form><div class="disclaimer">Devora-AI can make mistakes. Check important information.</div></div></main></div>
+</div><div class="side-label">YOUR CHATS</div><div class="history" id="history">Your conversations will appear here.</div><div class="profile" id="sidebarProfile"><div class="avatar">D</div><div class="profile-copy" style="min-width:0;flex:1"><b id="profileName">Devora-AI</b><div id="profileStatus" style="font-size:12px;color:var(--muted)">AI assistant</div></div><button class="sideitem" id="accountBtn" type="button" style="padding:8px 10px;font-size:12px;white-space:nowrap">Sign in</button></div></aside><main class="main"><header class="topbar"><div style="display:flex;align-items:center;gap:10px"><button class="iconbtn mobile-menu" id="menu">☰</button><div class="top-title">Devora-AI <span style="color:var(--muted);font-weight:400">⌄</span></div></div><div class="top-actions"></div></header><section class="content" id="content"><div class="welcome" id="welcome"><div style="display:inline-flex;align-items:center;gap:8px;padding:6px 11px;border:1px solid #4d4377;border-radius:999px;color:#c4b6ff;background:#8b70ff12;font-size:11px;letter-spacing:.04em;margin-bottom:22px"><span style="width:6px;height:6px;border-radius:50%;background:#37dcc5;box-shadow:0 0 12px #37dcc5"></span> YOUR CREATIVE AI WORKSPACE</div><h1>Imagine it.<br>Create it with AI.</h1><p>Chat, explore ideas, write code, and generate images, videos and music.</p><div class="suggestions"><button class="suggestion" data-prompt="Explain a difficult topic in simple terms"><b>✦ Learn something</b><span>Explain any topic simply</span></button><button class="suggestion" data-prompt="Help me write a professional email"><b>✎ Write anything</b><span>Draft, rewrite, or improve text</span></button><button class="suggestion" data-prompt="Help me understand or write code"><b>⌘ Coding help</b><span>Understand, write, and debug code</span></button><button class="suggestion" data-prompt="Give me creative ideas for a new project"><b>◎ Brainstorm ideas</b><span>Explore ideas and possibilities</span></button></div></div><div class="messages hidden" id="messages"></div></section><div class="composer-wrap"><form class="composer" id="form"><textarea id="input" rows="1" placeholder="Message Devora-AI..." aria-label="Message Devora-AI"></textarea><button class="send" id="send" aria-label="Send message">↑</button></form><div class="disclaimer">Devora-AI can make mistakes. Check important information.</div></div>
+<section id="mediaStudio" class="media-studio hidden" aria-label="AI media creation studio">
+ <div class="studio-inner">
+  <button type="button" class="studio-back" id="studioBack">← Back to chat</button>
+  <div class="studio-kicker">DEVORA CREATIVE STUDIO</div>
+  <h1 id="studioTitle">Create an image</h1>
+  <p class="studio-subtitle" id="studioSubtitle">Turn your idea into a polished visual with AI.</p>
+  <div class="studio-tabs" role="group" aria-label="Creation type">
+   <button type="button" class="studio-tab active" data-studio-mode="image"><span>✦</span>Image</button>
+   <button type="button" class="studio-tab" data-studio-mode="video"><span>▶</span>Video</button>
+   <button type="button" class="studio-tab" data-studio-mode="music"><span>♫</span>Music</button>
+  </div>
+  <label class="studio-label" for="studioPrompt">Describe what you want to create</label>
+  <textarea id="studioPrompt" maxlength="5000" placeholder="Describe your idea in detail..."></textarea>
+  <div class="studio-hint" id="studioHint">Tip: include the style, subject, mood, and details you want.</div>
+  <button type="button" class="studio-generate" id="studioGenerate">✦ Generate image</button>
+  <div class="studio-status" id="studioStatus" aria-live="polite">Sign in to generate with KIE.ai.</div>
+  <div class="studio-result" id="studioResult"></div>
+ </div>
+</section></main></div>
 <div id="authModal" class="auth-modal hidden" role="dialog" aria-modal="true" aria-labelledby="authTitle">
   <form id="authForm" class="auth-card">
     <button type="button" id="authClose" class="auth-close" aria-label="Close">×</button>
@@ -220,7 +260,7 @@ const $=s=>document.querySelector(s), input=$('#input'), messagesEl=$('#messages
 const SUPABASE_URL='https://vihbsfrwnslnmheowkhy.supabase.co';
 const SUPABASE_KEY='sb_publishable_HIMGxb-O6fj9O7OzT4ukuQ_jm5W8mWz';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let messages=[],busy=false,conversationId=null,currentUser=null,authMode='signin';
+let messages=[],busy=false,conversationId=null,currentUser=null,authMode='signin',activeMediaMode='image',studioOpen=false;
 function showChat(){welcome.classList.add('hidden');messagesEl.classList.remove('hidden')}
 function escapeHTML(value){return String(value).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
 function renderAnswer(value){
@@ -264,7 +304,12 @@ $('#authForm').addEventListener('submit',async e=>{e.preventDefault();const emai
 db.auth.onAuthStateChange(()=>{setTimeout(()=>refreshAccount(),0)});
 
 async function generateMedia(){
-  const type=$('#mediaType').value,prompt=$('#mediaPrompt').value.trim(),button=$('#mediaGenerate'),status=$('#mediaStatus'),result=$('#mediaResult');
+  const inStudio=studioOpen;
+  const type=inStudio?activeMediaMode:$('#mediaType').value;
+  const prompt=(inStudio?$('#studioPrompt'):$('#mediaPrompt')).value.trim();
+  const button=inStudio?$('#studioGenerate'):$('#mediaGenerate');
+  const status=inStudio?$('#studioStatus'):$('#mediaStatus');
+  const result=inStudio?$('#studioResult'):$('#mediaResult');
   if(!prompt){status.textContent='Enter a prompt describing what you want to create.';return}
   const {data:sessionData,error:sessionError}=await db.auth.getSession();
   const session=sessionData?.session;
@@ -299,25 +344,42 @@ async function generateMedia(){
   finally{button.disabled=false}
 }
 
-// Sidebar media mode selector
-document.querySelectorAll('[data-media-mode]').forEach(button=>{
- button.addEventListener('click',()=>{
-  const mode=button.dataset.mediaMode;
-  $('#mediaType').value=mode;
-  document.querySelectorAll('[data-media-mode]').forEach(b=>b.classList.toggle('active',b===button));
-  const labels={image:'Describe the image you want...',video:'Describe the video you want...',music:'Describe the music you want...'};
-  $('#mediaPrompt').placeholder=labels[mode];
-  $('#mediaStatus').textContent=mode==='image'?'Create an image with KIE.ai.':mode==='video'?'Create a video with KIE.ai.':'Create music with KIE.ai.';
-  $('#mediaPrompt').focus();
- });
-});
-
+// Dedicated creation studio: each media option opens its own full workspace.
+function setStudioMode(mode){
+ activeMediaMode=mode;$('#mediaType').value=mode;
+ const info={
+  image:{title:'Create an image',subtitle:'Turn your idea into a polished visual with AI.',placeholder:'Describe the subject, art style, colors, lighting, and composition...',hint:'Tip: include the style, subject, mood, and visual details.',button:'✦ Generate image'},
+  video:{title:'Create a video',subtitle:'Bring a scene, story, or concept to life with AI video.',placeholder:'Describe the scene, camera movement, action, setting, and visual style...',hint:'Tip: explain what happens in the scene and how the camera should move.',button:'▶ Generate video'},
+  music:{title:'Create music',subtitle:'Create a soundtrack from your idea, mood, genre, and sound.',placeholder:'Describe the genre, mood, tempo, instruments, vocal style, and theme...',hint:'Tip: include genre, energy, instruments, language, and whether you want vocals.',button:'♫ Generate music'}
+ }[mode];
+ $('#studioTitle').textContent=info.title;$('#studioSubtitle').textContent=info.subtitle;
+ $('#studioPrompt').placeholder=info.placeholder;$('#studioHint').textContent=info.hint;$('#studioGenerate').textContent=info.button;
+ document.querySelectorAll('[data-studio-mode]').forEach(b=>b.classList.toggle('active',b.dataset.studioMode===mode));
+ document.querySelectorAll('[data-media-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mediaMode===mode));
+ $('#mediaType').value=mode;
+}
+function openStudio(mode){
+ studioOpen=true;setStudioMode(mode);
+ $('#content').classList.add('hidden');$('.composer-wrap').classList.add('hidden');
+ $('#mediaStudio').classList.remove('hidden');$('#sidebar').classList.remove('open');
+ $('#studioPrompt').value=$('#mediaPrompt').value;
+ $('#studioStatus').textContent='Ready to create with KIE.ai. Sign in to begin.';
+ $('#studioPrompt').focus();
+}
+function closeStudio(){
+ studioOpen=false;$('#mediaStudio').classList.add('hidden');$('#content').classList.remove('hidden');$('.composer-wrap').classList.remove('hidden');
+}
+document.querySelectorAll('[data-media-mode]').forEach(button=>button.addEventListener('click',()=>openStudio(button.dataset.mediaMode)));
+document.querySelectorAll('[data-studio-mode]').forEach(button=>button.addEventListener('click',()=>setStudioMode(button.dataset.studioMode)));
+$('#studioBack').addEventListener('click',closeStudio);
+$('#studioGenerate').addEventListener('click',generateMedia);
+$('#studioPrompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();generateMedia()}});
 $('#mediaGenerate').addEventListener('click',generateMedia);
 $('#mediaPrompt').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();generateMedia()}});
 
 // Keyboard and small-screen interaction polish
 document.addEventListener('keydown',e=>{
- if(e.key==='Escape'){closeAuth();$('#sidebar').classList.remove('open')}
+ if(e.key==='Escape'){closeAuth();closeStudio();$('#sidebar').classList.remove('open')}
 });
 document.addEventListener('click',e=>{
  const sidebar=$('#sidebar');
