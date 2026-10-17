@@ -55,7 +55,7 @@ class _MediaPageState extends State<MediaPage>{
    final messages=[{'role':'user','content':'Create '+type+': '+enhanced},{'role':'assistant','content':'Generated '+type+' saved in Supabase. File: '+name+'. Storage path: '+(path??'unknown')+'. Media URL: '+display,'media_type':type,'media_url':display,'storage_path':path,'file_name':name,'prompt':enhanced}];
    final hist=await http.post(Uri.parse(mediaSupabaseUrl+'/rest/v1/devora_conversations'),headers:{'apikey':mediaSupabaseKey,'Authorization':'Bearer '+widget.token,'Content-Type':'application/json','Prefer':'return=minimal'},body:jsonEncode({'user_id':uid,'title':title,'messages':messages,'updated_at':DateTime.now().toUtc().toIso8601String()}));
    if(hist.statusCode<200||hist.statusCode>=300)throw Exception('Media saved, but chat history save failed: '+hist.body);
-   setState(()=>{mediaUrl=display,status:'Saved to Supabase Storage and chat history.'});
+   setState((){mediaUrl=display;status='Saved to Supabase Storage and chat history.';});
   }catch(e){setState(()=>error=e.toString().replaceFirst('Exception: ',''));}
   finally{if(mounted)setState(()=>busy=false);}
  }
