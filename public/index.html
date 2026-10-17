@@ -82,8 +82,49 @@ body{background:var(--bg)!important;color:var(--text);letter-spacing:0;font-size
  .messages{padding:18px 13px 25px}
 }
 @media(max-width:390px){.suggestions{grid-template-columns:1fr}.suggestion{min-height:66px}}
+
+/* Sidebar creation tools */
+.media-sidebar{border-top:1px solid #333;padding:4px 0 12px;display:flex;flex-direction:column;gap:9px;min-width:0}
+.media-sidebar .side-label{margin:12px 4px 2px}
+.media-nav{display:grid;grid-template-columns:1fr;gap:4px}
+.media-nav-btn{display:flex;align-items:center;gap:10px;width:100%;border:1px solid transparent;border-radius:9px;background:transparent;text-align:left;padding:9px 10px;color:#c5c5c5;font-size:13px}
+.media-nav-btn span{width:18px;text-align:center;font-size:15px}
+.media-nav-btn:hover{background:#262626}
+.media-nav-btn.active{background:#292929;border-color:#444;color:#fff}
+.media-prompt-label{font-size:12px;color:#aaa;margin:3px 2px 0}
+.media-sidebar textarea{width:100%;min-height:76px;max-height:150px;resize:vertical;background:#222;border:1px solid #414141;border-radius:10px;color:#eee;padding:10px;font:13px/1.45 inherit;outline:none}
+.media-sidebar textarea:focus{border-color:#777}
+.media-sidebar textarea::placeholder{color:#858585}
+.media-type-hidden{display:none!important}
+.media-sidebar .media-generate{width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:10px;border-radius:10px}
+.media-sidebar .media-status{font-size:11px;line-height:1.4;padding:2px;color:#aaa}
+.media-sidebar .media-result{max-height:220px;overflow:auto}
+.media-sidebar .media-result img,.media-sidebar .media-result video{width:100%;max-height:190px;object-fit:contain}
+.media-sidebar .media-result audio{width:100%}
+.sidebar{overflow-y:auto;overscroll-behavior:contain}
+.sidebar .profile{flex-shrink:0}
+@media(max-width:680px){
+ .sidebar{overflow-y:auto}
+ .media-nav{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+ .media-nav-btn{flex-direction:column;justify-content:center;gap:3px;padding:8px 3px;font-size:11px}
+ .media-nav-btn span{font-size:16px}
+ .media-sidebar textarea{min-height:64px}
+}
 </style></head>
-<body><div class="app"><aside class="sidebar" id="sidebar"><div class="brand"><div class="logo">D</div><span>devora<span style="color:var(--accent2)">.ai</span></span></div><button class="newchat" id="newChat">＋ &nbsp; New chat</button><div class="side-label">YOUR CHATS</div><div class="history" id="history">Your conversations will appear here.</div><div class="profile"><div class="avatar">D</div><div><b>Devora-AI</b><div style="font-size:12px;color:var(--muted)">AI assistant</div></div></div></aside><main class="main"><header class="topbar"><div style="display:flex;align-items:center;gap:10px"><button class="iconbtn mobile-menu" id="menu">☰</button><div class="top-title">Devora-AI <span style="color:var(--muted);font-weight:400">⌄</span></div></div><div class="top-actions"><button class="iconbtn" id="accountBtn">Sign in</button><button class="iconbtn" id="clear">Clear chat</button></div></header><section class="content" id="content"><div class="welcome" id="welcome"><div style="display:inline-flex;align-items:center;gap:8px;padding:6px 11px;border:1px solid #4d4377;border-radius:999px;color:#c4b6ff;background:#8b70ff12;font-size:11px;letter-spacing:.04em;margin-bottom:22px"><span style="width:6px;height:6px;border-radius:50%;background:#37dcc5;box-shadow:0 0 12px #37dcc5"></span> YOUR CREATIVE AI WORKSPACE</div><h1>Imagine it.<br>Create it with AI.</h1><p>Chat, explore ideas, write code, and generate images, videos and music.</p><div class="suggestions"><button class="suggestion" data-prompt="Explain a difficult topic in simple terms"><b>✦ Learn something</b><span>Explain any topic simply</span></button><button class="suggestion" data-prompt="Help me write a professional email"><b>✎ Write anything</b><span>Draft, rewrite, or improve text</span></button><button class="suggestion" data-prompt="Help me understand or write code"><b>⌘ Coding help</b><span>Understand, write, and debug code</span></button><button class="suggestion" data-prompt="Give me creative ideas for a new project"><b>◎ Brainstorm ideas</b><span>Explore ideas and possibilities</span></button></div></div><div class="messages hidden" id="messages"></div></section><div class="media-tools"><div class="media-row"><select id="mediaType" aria-label="Media type"><option value="image">✦ Image</option><option value="video">▶ Video</option><option value="music">♫ Music</option></select><input id="mediaPrompt" maxlength="5000" placeholder="Describe the image, video, or music you want..."><button class="media-generate" id="mediaGenerate">Generate</button></div><div class="media-status" id="mediaStatus">Image, video, and music generation powered by KIE.ai. Sign in to use it.</div><div class="media-result" id="mediaResult"></div></div><div class="composer-wrap"><form class="composer" id="form"><textarea id="input" rows="1" placeholder="Message Devora-AI..." aria-label="Message Devora-AI"></textarea><button class="send" id="send" aria-label="Send message">↑</button></form><div class="disclaimer">Devora-AI can make mistakes. Check important information.</div></div></main></div>
+<body><div class="app"><aside class="sidebar" id="sidebar"><div class="brand"><div class="logo">D</div><span>devora<span style="color:var(--accent2)">.ai</span></span></div><button class="newchat" id="newChat">＋ &nbsp; New chat</button><div class="media-sidebar">
+  <div class="side-label">CREATE WITH AI</div>
+  <div class="media-nav" role="group" aria-label="Choose what to generate">
+    <button type="button" class="media-nav-btn active" data-media-mode="image"><span>✦</span> Image</button>
+    <button type="button" class="media-nav-btn" data-media-mode="video"><span>▶</span> Video</button>
+    <button type="button" class="media-nav-btn" data-media-mode="music"><span>♫</span> Music</button>
+  </div>
+  <label class="media-prompt-label" for="mediaPrompt">Describe your creation</label>
+  <textarea id="mediaPrompt" maxlength="5000" placeholder="Describe what you want to create..."></textarea>
+  <select id="mediaType" aria-label="Media type" class="media-type-hidden"><option value="image">Image</option><option value="video">Video</option><option value="music">Music</option></select>
+  <button class="media-generate" id="mediaGenerate"><span>✦</span> Generate</button>
+  <div class="media-status" id="mediaStatus">Powered by KIE.ai. Sign in to create.</div>
+  <div class="media-result" id="mediaResult"></div>
+</div><div class="side-label">YOUR CHATS</div><div class="history" id="history">Your conversations will appear here.</div><div class="profile"><div class="avatar">D</div><div><b>Devora-AI</b><div style="font-size:12px;color:var(--muted)">AI assistant</div></div></div></aside><main class="main"><header class="topbar"><div style="display:flex;align-items:center;gap:10px"><button class="iconbtn mobile-menu" id="menu">☰</button><div class="top-title">Devora-AI <span style="color:var(--muted);font-weight:400">⌄</span></div></div><div class="top-actions"><button class="iconbtn" id="accountBtn">Sign in</button><button class="iconbtn" id="clear">Clear chat</button></div></header><section class="content" id="content"><div class="welcome" id="welcome"><div style="display:inline-flex;align-items:center;gap:8px;padding:6px 11px;border:1px solid #4d4377;border-radius:999px;color:#c4b6ff;background:#8b70ff12;font-size:11px;letter-spacing:.04em;margin-bottom:22px"><span style="width:6px;height:6px;border-radius:50%;background:#37dcc5;box-shadow:0 0 12px #37dcc5"></span> YOUR CREATIVE AI WORKSPACE</div><h1>Imagine it.<br>Create it with AI.</h1><p>Chat, explore ideas, write code, and generate images, videos and music.</p><div class="suggestions"><button class="suggestion" data-prompt="Explain a difficult topic in simple terms"><b>✦ Learn something</b><span>Explain any topic simply</span></button><button class="suggestion" data-prompt="Help me write a professional email"><b>✎ Write anything</b><span>Draft, rewrite, or improve text</span></button><button class="suggestion" data-prompt="Help me understand or write code"><b>⌘ Coding help</b><span>Understand, write, and debug code</span></button><button class="suggestion" data-prompt="Give me creative ideas for a new project"><b>◎ Brainstorm ideas</b><span>Explore ideas and possibilities</span></button></div></div><div class="messages hidden" id="messages"></div></section><div class="composer-wrap"><form class="composer" id="form"><textarea id="input" rows="1" placeholder="Message Devora-AI..." aria-label="Message Devora-AI"></textarea><button class="send" id="send" aria-label="Send message">↑</button></form><div class="disclaimer">Devora-AI can make mistakes. Check important information.</div></div></main></div>
 <div id="authModal" class="auth-modal hidden" role="dialog" aria-modal="true" aria-labelledby="authTitle">
   <form id="authForm" class="auth-card">
     <button type="button" id="authClose" class="auth-close" aria-label="Close">×</button>
@@ -158,7 +199,20 @@ async function generateMedia(){
   }catch(error){status.textContent=error.message||'Generation failed.'}
   finally{button.disabled=false}
 }
-$('#mediaGenerate').addEventListener('click',generateMedia);
+
+// Sidebar media mode selector
+document.querySelectorAll('[data-media-mode]').forEach(button=>{
+ button.addEventListener('click',()=>{
+  const mode=button.dataset.mediaMode;
+  $('#mediaType').value=mode;
+  document.querySelectorAll('[data-media-mode]').forEach(b=>b.classList.toggle('active',b===button));
+  const labels={image:'Describe the image you want...',video:'Describe the video you want...',music:'Describe the music you want...'};
+  $('#mediaPrompt').placeholder=labels[mode];
+  $('#mediaStatus').textContent=mode==='image'?'Create an image with KIE.ai.':mode==='video'?'Create a video with KIE.ai.':'Create music with KIE.ai.';
+  $('#mediaPrompt').focus();
+ });
+});
+\n$('#mediaGenerate').addEventListener('click',generateMedia);
 $('#mediaPrompt').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();generateMedia()}});
 
 refreshAccount();
