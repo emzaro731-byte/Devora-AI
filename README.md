@@ -21,5 +21,7 @@ Create a new Web Service from this repository. Render detects `render.yaml`; set
 - Responsive ChatGPT-inspired dark interface
 - Chat composer with Enter-to-send and Shift+Enter newline
 - Starter prompts and new/clear chat controls
-- Groq-backed assistant through a server-side endpoint
+- Groq-backed assistant through a server-side endpoint (default model: `openai/gpt-oss-120b`)
+- Supabase email/password sign-up and sign-in
+- Supabase-backed conversation history, protected by row-level security so each user can access only their own chats
 - Friendly setup errors when the API key is missing
