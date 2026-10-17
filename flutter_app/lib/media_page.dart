@@ -28,7 +28,7 @@ class _MediaPageState extends State<MediaPage>{
   finally{if(mounted)setState(()=>creditLoading=false);}
  }
  Future<void> buyCredits(String packageId)async{
-  setState(()=>{purchaseBusy=true,error=null});
+  setState(() { purchaseBusy=true; error=null; });
   try{
    final d=await paymentCall({'action':'create','packageId':packageId});
    final ref=d['reference']?.toString()??'';final link=d['checkoutUrl']?.toString()??'';
@@ -42,11 +42,11 @@ class _MediaPageState extends State<MediaPage>{
  }
  Future<void> verifyPurchase()async{
   final ref=pendingReference;if(ref==null)return;
-  setState(()=>{purchaseBusy=true,error=null,status='Verifying Flutterwave payment…'});
+  setState(() { purchaseBusy=true; error=null; status='Verifying Flutterwave payment…'; });
   try{
    final d=await paymentCall({'action':'verify','reference':ref});
    if(d['pending']==true){setState(()=>status=d['message']?.toString()??'Payment is still pending. Try again shortly.');return;}
-   setState(()=>{pendingReference=null,status='Payment confirmed. '+(d['credits']?.toString()??'')+' credits added.'});
+   setState(() { pendingReference=null; status='Payment confirmed. '+(d['credits']?.toString()??'')+' credits added.'; });
    await refreshBalance();
   }catch(e){setState(()=>error=e.toString().replaceFirst('Exception: ',''));}
   finally{if(mounted)setState(()=>purchaseBusy=false);}
@@ -115,7 +115,7 @@ class _MediaPageState extends State<MediaPage>{
    if(pendingReference!=null)const Text('After completing checkout, return to Devora and verify your payment.',style:TextStyle(color:Colors.white60,fontSize:12))
   ]))),
   const SizedBox(height:18),
-  SegmentedButton<String>(segments:const [ButtonSegment(value:'image',label:Text('Image'),icon:Icon(Icons.image_outlined)),ButtonSegment(value:'video',label:Text('Video'),icon:Icon(Icons.videocam_outlined)),ButtonSegment(value:'music',label:Text('Music'),icon:Icon(Icons.music_note))],selected:{type},onSelectionChanged:(v)=>setState(()=>{type=v.first,model='',mediaUrl=null})),
+  SegmentedButton<String>(segments:const [ButtonSegment(value:'image',label:Text('Image'),icon:Icon(Icons.image_outlined)),ButtonSegment(value:'video',label:Text('Video'),icon:Icon(Icons.videocam_outlined)),ButtonSegment(value:'music',label:Text('Music'),icon:Icon(Icons.music_note))],selected:{type},onSelectionChanged:(v)=>setState(() { type=v.first; model=''; mediaUrl=null; })),
   const SizedBox(height:14),TextField(controller:prompt,minLines:3,maxLines:6,decoration:InputDecoration(labelText:type.toUpperCase()+' prompt',hintText:type=='music'?'Describe the song, genre, mood and vocals…':'Describe what you want to create…',alignLabelWithHint:true)),
   if(type!='music')...[
    const SizedBox(height:14),const Text('Visual style'),const SizedBox(height:6),DropdownButtonFormField<String>(value:style,items:styles.map((v)=>DropdownMenuItem(value:v,child:Text(v))).toList(),onChanged:(v)=>setState(()=>style=v??style)),
