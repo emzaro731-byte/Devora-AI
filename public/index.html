@@ -748,6 +748,10 @@ body{
 #sidebar #history .history-row{
   flex-shrink:0;
 }
+
+/* Starter and daily reward notice */
+.daily-credit-notice{max-width:900px;margin:-2px auto 10px;padding:8px 14px;border:1px solid rgba(64,190,255,.2);border-radius:12px;background:linear-gradient(100deg,rgba(21,82,139,.18),rgba(16,140,132,.12));color:#a9d9ff;font-size:12px;text-align:center}
+@media(max-width:680px){.daily-credit-notice{margin:0 10px 9px;font-size:11px}}
 </style></head>
 <body><div class="app"><aside class="sidebar" id="sidebar"><div class="brand"><div class="logo">D</div><span>devora<span style="color:var(--accent2)">.ai</span></span></div><button type="button" class="newchat" id="newChat">＋ &nbsp; New chat</button><div class="media-sidebar">
   <div class="side-label">CREATE WITH AI</div>
@@ -1018,14 +1022,26 @@ let mediaCreditBalance = null;
 function selectedMediaCreditCost(){const base=DEVORA_CREDIT_COSTS[$('#studioModel')?.value]||0;if(activeMediaMode!=='video')return base;const seconds=Number($('#studioVideoDuration')?.value)||10;return Math.ceil(base*Math.max(1,seconds/10))}
 function updateMediaCreditCost(){const cost=selectedMediaCreditCost();const label=$('#mediaCreditCost');const balance=Number(mediaCreditBalance);const insufficient=mediaCreditBalance!==null&&Number.isFinite(balance)&&cost>balance;if(label)label.textContent=cost?(insufficient?'Insufficient credits · Need '+cost+', have '+balance:cost+' credits estimated'):'— credits';if(label)label.style.color=insufficient?'#ff7b86':'';const note=$('#videoDurationNote');if(note&&activeMediaMode==='video'){const seconds=Number($('#studioVideoDuration')?.value)||10;note.textContent=insufficient?'Insufficient credits for this duration. Choose a shorter video or add credits.':seconds<=10?'Short clip selected. Longer durations use more credits.':'Estimated cost scales with duration. Long videos open the movie workflow to generate scenes and assemble one MP4.'}const button=$('#studioGenerate');if(button&&studioOpen&&activeMediaMode==='video')button.disabled=!!insufficient}
 function setMediaCreditBalance(value){if(value===null||value===undefined)return;mediaCreditBalance=Number(value);const label=$('#mediaCreditBalance');if(label)label.textContent=mediaCreditBalance+' credits'}
+function ensureDailyCreditNotice(){
+ let notice=$('#dailyCreditNotice');
+ if(!notice){notice=document.createElement('div');notice.id='dailyCreditNotice';notice.className='daily-credit-notice';const panel=$('#mediaCreditPanel');if(panel)panel.insertAdjacentElement('afterend',notice)}
+ return notice;
+}
 async function refreshMediaCredits(){
  const label=$('#mediaCreditBalance');if(!label)return;
- if(!currentUser){mediaCreditBalance=null;label.textContent='Sign in to view';updateMediaCreditCost();return}
+ if(!currentUser){mediaCreditBalance=null;label.textContent='Sign in to view';const notice=$('#dailyCreditNotice');if(notice)notice.textContent='New accounts receive 100 starter credits. Claim 50 daily credits when signed in.';updateMediaCreditCost();return}
  label.textContent='Loading…';
- try{const {data:sd}=await db.auth.getSession();const session=sd?.session;if(!session){mediaCreditBalance=null;label.textContent='Sign in to view';return}
- const response=await fetch(SUPABASE_URL+'/functions/v1/devora-media',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+session.access_token},body:JSON.stringify({action:'credits'})});
- const data=await response.json();if(!response.ok||data.error)throw new Error(data.error||'Unable to load credits');setMediaCreditBalance(data.balance)
- }catch(e){label.textContent='Unavailable';console.warn('Could not load Devora credits:',e.message)}updateMediaCreditCost();updateMovieCreditPanel()
+ try{
+  const {data:sd}=await db.auth.getSession();const session=sd?.session;if(!session){mediaCreditBalance=null;label.textContent='Sign in to view';return}
+  let dailyAward=0;
+  try{const claim=await db.rpc('devora_claim_daily_credits');if(claim.error)throw claim.error;dailyAward=Number(claim.data?.awarded||0);if(claim.data?.balance!==undefined)setMediaCreditBalance(claim.data.balance)}
+  catch(dailyError){console.warn('Daily credit claim unavailable:',dailyError.message)}
+  const notice=ensureDailyCreditNotice();
+  if(notice)notice.textContent=dailyAward>0?'🎁 Daily bonus: +50 credits added! New accounts start with 100 credits.':'🎁 Daily credits: 50 credits once per day · New accounts start with 100 credits.';
+  const response=await fetch(SUPABASE_URL+'/functions/v1/devora-media',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+session.access_token},body:JSON.stringify({action:'credits'})});
+  const data=await response.json();if(!response.ok||data.error)throw new Error(data.error||'Unable to load credits');setMediaCreditBalance(data.balance)
+ }catch(e){label.textContent='Unavailable';console.warn('Could not load Devora credits:',e.message)}
+ updateMediaCreditCost();updateMovieCreditPanel()
 }
 function populateKieModels(mode, preferred){
  const select=$('#studioModel'); if(!select)return;
