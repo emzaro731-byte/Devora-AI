@@ -438,6 +438,51 @@ body:after{width:260px;height:260px;right:-160px;bottom:8%;background:#31d8ff}
 .media-sidebar>.media-nav .media-nav-btn span{width:20px!important;text-align:center!important;font-size:16px!important}
 .media-sidebar>.media-prompt-label,.media-sidebar>#mediaPrompt,.media-sidebar>.media-upload,.media-sidebar>#mediaFiles,.media-sidebar>#mediaAttachments,.media-sidebar>#mediaType,.media-sidebar>#mediaGenerate,.media-sidebar>#mediaStatus,.media-sidebar>#mediaResult{display:none!important}
 @media(max-width:680px){.media-sidebar>.media-nav{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:5px!important}.media-sidebar>.media-nav .media-nav-btn{flex-direction:column!important;justify-content:center!important;gap:4px!important;padding:9px 3px!important;font-size:11px!important}.media-sidebar>.media-nav .media-nav-btn span{font-size:17px!important}}
+
+/* Allow sidebar navigation and chat history to scroll vertically independently. */
+.sidebar{
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+.sidebar .brand,
+.sidebar .newchat,
+.sidebar .side-label,
+.sidebar .profile{
+  flex-shrink:0;
+}
+.sidebar .history,
+.sidebar .history-list{
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+.sidebar .history-list{
+  max-height:min(48vh,420px);
+}
+.sidebar::-webkit-scrollbar,
+.sidebar .history::-webkit-scrollbar,
+.sidebar .history-list::-webkit-scrollbar{
+  width:5px;
+}
+.sidebar::-webkit-scrollbar-thumb,
+.sidebar .history::-webkit-scrollbar-thumb,
+.sidebar .history-list::-webkit-scrollbar-thumb{
+  background:#5559;
+  border-radius:10px;
+}
+@media(max-width:680px){
+  .sidebar{
+    height:100dvh;
+    padding-bottom:max(14px,env(safe-area-inset-bottom))!important;
+  }
+  .sidebar .history-list{max-height:42vh}
+}
+
 </style></head>
 <body><div class="app"><aside class="sidebar" id="sidebar"><div class="brand"><div class="logo">D</div><span>devora<span style="color:var(--accent2)">.ai</span></span></div><button class="newchat" id="newChat">＋ &nbsp; New chat</button><div class="media-sidebar">
   <div class="side-label">CREATE WITH AI</div>
