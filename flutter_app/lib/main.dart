@@ -41,7 +41,29 @@ class _LoginState extends State<Login>{
  ]))))));
 }
 class Home extends StatefulWidget {final String email,token;final Future<void> Function() onLogout;const Home({super.key,required this.email,required this.token,required this.onLogout});@override State<Home> createState()=>_HomeState();}
-class _HomeState extends State<Home>{int tab=0;@override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Row(children:[Icon(Icons.auto_awesome,color:cyan),SizedBox(width:9),Text('Devora AI',style:TextStyle(fontWeight:FontWeight.bold))]),actions:[PopupMenuButton<String>(onSelected:(v){if(v=='logout')widget.onLogout();},itemBuilder:(_)=>[PopupMenuItem(value:'email',enabled:false,child:Text(widget.email)),const PopupMenuItem(value:'logout',child:Text('Sign out'))])]),body:IndexedStack(index:tab,children:[Chat(token:widget.token),MediaPage(token:widget.token),Film(token:widget.token),Library(token:widget.token)]),bottomNavigationBar:NavigationBar(selectedIndex:tab,onDestinationSelected:(v)=>setState(()=>tab=v),destinations:const [NavigationDestination(icon:Icon(Icons.chat_bubble_outline),label:'Chat'),NavigationDestination(icon:Icon(Icons.auto_awesome),label:'Create'),NavigationDestination(icon:Icon(Icons.movie_creation_outlined),label:'Film studio'),NavigationDestination(icon:Icon(Icons.folder_outlined),label:'Library')]));}
+class _HomeState extends State<Home>{
+ int tab=0;
+ void openBuyCredits(){setState(()=>tab=1);WidgetsBinding.instance.addPostFrameCallback((_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Open the Create tab and tap Buy credits to choose a package.')));});}
+ @override Widget build(BuildContext context)=>Scaffold(
+  appBar:AppBar(title:const Row(children:[Icon(Icons.auto_awesome,color:cyan),SizedBox(width:9),Text('Devora AI',style:TextStyle(fontWeight:FontWeight.bold))]),actions:[Builder(builder:(ctx)=>IconButton(tooltip:'Open sidebar',icon:const Icon(Icons.menu_open),onPressed:()=>Scaffold.of(ctx).openDrawer())),PopupMenuButton<String>(onSelected:(v){if(v=='logout')widget.onLogout();},itemBuilder:(_)=>[PopupMenuItem(value:'email',enabled:false,child:Text(widget.email)),const PopupMenuItem(value:'logout',child:Text('Sign out'))])]),
+  drawer:Drawer(backgroundColor:panel,child:SafeArea(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+   const Padding(padding:EdgeInsets.fromLTRB(20,22,20,18),child:Row(children:[Icon(Icons.auto_awesome,color:cyan,size:30),SizedBox(width:12),Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('DEVORA AI',style:TextStyle(fontWeight:FontWeight.bold,letterSpacing:2)),Text('Your AI studio',style:TextStyle(color:Colors.white60,fontSize:12))])])),
+   const Divider(color:Color(0xFF293A52)),
+   _drawerItem(Icons.chat_bubble_outline,'Chat',0),
+   _drawerItem(Icons.auto_awesome,'Create media',1),
+   _drawerItem(Icons.movie_creation_outlined,'Film studio',2),
+   _drawerItem(Icons.folder_outlined,'Library',3),
+   const Padding(padding:EdgeInsets.symmetric(horizontal:16,vertical:10),child:Divider(color:Color(0xFF293A52))),
+   Padding(padding:const EdgeInsets.symmetric(horizontal:12),child:Card(color:const Color(0xFF102A34),child:ListTile(leading:const Icon(Icons.add_card,color:cyan),title:const Text('Buy credits',style:TextStyle(fontWeight:FontWeight.bold)),subtitle:const Text('Top up with Flutterwave',style:TextStyle(color:Colors.white60,fontSize:12)),trailing:const Icon(Icons.chevron_right),onTap:(){Navigator.pop(context);openBuyCredits();}))),
+   const Spacer(),
+   ListTile(leading:const Icon(Icons.account_circle_outlined,color:cyan),title:Text(widget.email,maxLines:1,overflow:TextOverflow.ellipsis),subtitle:const Text('Signed in',style:TextStyle(color:Colors.white60)),),
+   ListTile(leading:const Icon(Icons.logout),title:const Text('Sign out'),onTap:(){Navigator.pop(context);widget.onLogout();}),
+   const SizedBox(height:8)
+  ]))),
+  body:IndexedStack(index:tab,children:[Chat(token:widget.token),MediaPage(token:widget.token),Film(token:widget.token),Library(token:widget.token)]),
+  bottomNavigationBar:NavigationBar(selectedIndex:tab,onDestinationSelected:(v)=>setState(()=>tab=v),destinations:const [NavigationDestination(icon:Icon(Icons.chat_bubble_outline),label:'Chat'),NavigationDestination(icon:Icon(Icons.auto_awesome),label:'Create'),NavigationDestination(icon:Icon(Icons.movie_creation_outlined),label:'Film studio'),NavigationDestination(icon:Icon(Icons.folder_outlined),label:'Library')]));
+ Widget _drawerItem(IconData icon,String label,int index)=>ListTile(leading:Icon(icon,color:tab==index?cyan:Colors.white70),title:Text(label,style:TextStyle(fontWeight:tab==index?FontWeight.bold:FontWeight.normal)),selected:tab==index,selectedTileColor:const Color(0xFF18304A),onTap:(){Navigator.pop(context);setState(()=>tab=index);});
+}
 class Msg{final String role,text;Msg(this.role,this.text);}
 class Chat extends StatefulWidget{final String token;const Chat({super.key,required this.token});@override State<Chat> createState()=>_ChatState();}
 class _ChatState extends State<Chat>{
