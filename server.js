@@ -13,7 +13,7 @@ app.post('/api/chat', async (req,res)=>{
     if (!safe.length) return res.status(400).json({error:'Type a message to begin.'});
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method:'POST', headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},
-      body:JSON.stringify({model:process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',messages:[{role:'system',content:'You are Devora-AI, a helpful, clear, capable assistant. Answer naturally, be honest about uncertainty, and provide useful steps and code when appropriate.'},...safe],temperature:0.7,max_tokens:2048})
+      body:JSON.stringify({model:process.env.GROQ_MODEL || 'openai/gpt-oss-120b',messages:[{role:'system',content:'You are Devora-AI, a helpful, clear, capable assistant. Answer naturally, be honest about uncertainty, and provide useful steps and code when appropriate.'},...safe],temperature:0.7,max_tokens:2048})
     });
     const data = await response.json();
     if (!response.ok) return res.status(response.status).json({error:data?.error?.message || 'AI provider request failed.'});
