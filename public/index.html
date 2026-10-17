@@ -62,7 +62,7 @@ body{background:var(--bg)!important;color:var(--text);letter-spacing:0;font-size
 .media-generate:hover{filter:brightness(1.08)}
 .media-status{color:#a0a0a0}
 .media-result img,.media-result video{border-color:#444}
-.auth-modal{background:#0009!important;backdrop-filter:blur(5px)}
+.auth-modal{z-index:150!important;background:#0009!important;backdrop-filter:blur(5px)}
 .auth-card{background:#202020!important;border-color:#444!important;border-radius:20px}
 .auth-card input{background:#171717!important;border-color:#484848!important}
 .auth-submit{background:#10a37f!important}
@@ -687,20 +687,29 @@ $('#buyCreditsBtn').addEventListener('click',openBuyCredits);
 $('#creditsClose').addEventListener('click',closeBuyCredits);
 $('#creditsModal').addEventListener('click',e=>{if(e.target===$('#creditsModal'))closeBuyCredits()});
 $('#creditsPackages').addEventListener('click',async e=>{
- const button=e.target.closest('[data-package]');if(!button)return;
- const packageId=button.dataset.package;if(!CREDIT_PACKAGES[packageId])return;
- if(!currentUser){closeBuyCredits();openAuth();return}
- const {data:sessionData,error:sessionError}=await db.auth.getSession();
- const session=sessionData?.session;if(sessionError||!session?.access_token){$('#creditsStatus').textContent='Your session expired. Sign in again.';return}
- const buttons=Array.from($('#creditsPackages').querySelectorAll('button'));buttons.forEach(b=>b.disabled=true);
- $('#creditsStatus').textContent='Creating your order for ₦'+CREDIT_PACKAGES[packageId].amount.toLocaleString('en-NG')+'…';
+ const button=e.target.closest('button[data-package]');if(!button)return;
+ const packageId=button.dataset.package,selected=CREDIT_PACKAGES[packageId];if(!selected)return;
+ const status=$('#creditsStatus'),buttons=Array.from($('#creditsPackages').querySelectorAll('button'));
+ buttons.forEach(b=>b.disabled=true);
+ status.textContent='Preparing your ₦'+selected.amount.toLocaleString('en-NG')+' checkout…';
  try{
+  const {data:sessionData,error:sessionError}=await db.auth.getSession();
+  if(sessionError)throw sessionError;
+  const session=sessionData?.session;
+  if(!session?.access_token||!session.user){status.textContent='Please sign in first. Opening sign-in…';closeBuyCredits();openAuth();return}
+  currentUser=session.user;
+  status.textContent='Connecting securely to Flutterwave…';
   const response=await fetch(SUPABASE_URL+'/functions/v1/devora-credit-payments',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+session.access_token},body:JSON.stringify({action:'create',packageId})});
   const result=await response.json().catch(()=>({}));
-  if(!response.ok||!result.checkoutUrl)throw new Error(result.error||'Could not start checkout. Please try again.');
+  if(!response.ok||!result.checkoutUrl)throw new Error(result.error||('Checkout request failed ('+response.status+'). Check live Flutterwave secrets in Supabase.'));
   sessionStorage.setItem('devora_pending_credit_reference',result.reference);
-  window.location.assign(result.checkoutUrl);
- }catch(err){$('#creditsStatus').textContent=err.message||'Could not start payment.';buttons.forEach(b=>b.disabled=false)}
+  status.textContent='Opening secure Flutterwave checkout…';
+  window.location.href=result.checkoutUrl;
+ }catch(err){
+  console.error('Devora credit checkout failed:',err);
+  status.textContent='Checkout failed: '+(err.message||'Unknown error')+' Please check your internet connection and live Flutterwave setup.';
+  alert('Devora AI could not start checkout.\n\n'+(err.message||'Unknown error')+'\n\nCheck that Render has deployed the latest version and live Flutterwave secrets are configured in Supabase.');
+ }finally{buttons.forEach(b=>b.disabled=false)}
 });
 async function verifyReturnedCreditPayment(){
  const params=new URLSearchParams(location.search);
