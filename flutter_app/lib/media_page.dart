@@ -78,7 +78,7 @@ class _MediaPageState extends State<MediaPage>{
  }
  void showCreditPacks(){
   showModalBottomSheet<void>(context:context,isScrollControlled:true,backgroundColor:const Color(0xFF111B2B),builder:(ctx)=>SafeArea(child:Padding(padding:const EdgeInsets.all(18),child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-   const Text('Buy Devora credits',style:TextStyle(fontSize:23,fontWeight:FontWeight.bold)),const SizedBox(height:6),const Text('Secure checkout powered by Flutterwave · NGN',style:TextStyle(color:Colors.white60)),const SizedBox(height:14),
+   const Text('Buy Devora credits',style:TextStyle(fontSize:23,fontWeight:FontWeight.bold)),const SizedBox(height:6),const Text('Pay by card, bank transfer or USSD through Flutterwave · NGN',style:TextStyle(color:Colors.white60)),const SizedBox(height:14),
    for(final pack in const [
     {'id':'pack_5k','credits':1000,'price':5000,'name':'1,000 Credits'},
     {'id':'pack_10k','credits':2000,'price':10000,'name':'2,000 Credits'},
@@ -94,7 +94,7 @@ class _MediaPageState extends State<MediaPage>{
     {'id':'pack_60k','credits':12000,'price':60000,'name':'12,000 Credits'},
    ])
     Card(color:const Color(0xFF17253A),child:ListTile(title:Text(pack['name'].toString(),style:const TextStyle(fontWeight:FontWeight.bold)),subtitle:Text(pack['credits'].toString()+' credits'),trailing:FilledButton(onPressed:purchaseBusy?null:(){Navigator.pop(ctx);buyCredits(pack['id'].toString());},child:Text('₦'+(pack['price'] as int).toString())))),
-   const SizedBox(height:8),const Text('Credits are added only after Flutterwave confirms the payment.',style:TextStyle(color:Colors.white54,fontSize:12))
+   const SizedBox(height:8),const Text('Choose Bank Transfer at Flutterwave checkout if available. Credits are added only after payment is confirmed.',style:TextStyle(color:Colors.white54,fontSize:12))
   ]))));
  }
  Future<Map<String,dynamic>> call(Map<String,dynamic> body)async{
@@ -150,7 +150,7 @@ class _MediaPageState extends State<MediaPage>{
    const Text('YOUR DEVORA CREDITS',style:TextStyle(color:Color(0xFF22D3EE),fontWeight:FontWeight.bold,letterSpacing:1)),
    const SizedBox(height:5),Row(children:[Expanded(child:Text(creditLoading?'Loading balance…':creditBalance==null?'Balance unavailable':'${creditBalance} credits',style:const TextStyle(fontSize:24,fontWeight:FontWeight.bold))),IconButton(onPressed:creditLoading?null:refreshBalance,icon:const Icon(Icons.refresh)),FilledButton.icon(onPressed:purchaseBusy?null:showCreditPacks,icon:const Icon(Icons.add_card),label:const Text('Buy credits'))]),
    if(pendingReference!=null)Padding(padding:const EdgeInsets.only(top:8),child:FilledButton.tonalIcon(onPressed:purchaseBusy?null:verifyPurchase,icon:const Icon(Icons.verified_outlined),label:Text(purchaseBusy?'Checking payment…':'Verify payment'))),
-   if(pendingReference!=null)const Text('After completing checkout, return to Devora and verify your payment.',style:TextStyle(color:Colors.white60,fontSize:12))
+   if(pendingReference!=null)const Text('After paying by card or bank transfer, Devora checks for confirmation automatically.',style:TextStyle(color:Colors.white60,fontSize:12))
   ]))),
   const SizedBox(height:18),
   SegmentedButton<String>(segments:const [ButtonSegment(value:'image',label:Text('Image'),icon:Icon(Icons.image_outlined)),ButtonSegment(value:'video',label:Text('Video'),icon:Icon(Icons.videocam_outlined)),ButtonSegment(value:'music',label:Text('Music'),icon:Icon(Icons.music_note))],selected:{type},onSelectionChanged:(v)=>setState(() { type=v.first; model=''; mediaUrl=null; })),
