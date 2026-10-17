@@ -54,7 +54,20 @@ class _MediaPageState extends State<MediaPage>{
  void showCreditPacks(){
   showModalBottomSheet<void>(context:context,isScrollControlled:true,backgroundColor:const Color(0xFF111B2B),builder:(ctx)=>SafeArea(child:Padding(padding:const EdgeInsets.all(18),child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[
    const Text('Buy Devora credits',style:TextStyle(fontSize:23,fontWeight:FontWeight.bold)),const SizedBox(height:6),const Text('Secure checkout powered by Flutterwave · NGN',style:TextStyle(color:Colors.white60)),const SizedBox(height:14),
-   for(final pack in const [{'id':'starter','credits':500,'price':500,'name':'Starter'},{'id':'creator','credits':1000,'price':1000,'name':'Creator'},{'id':'studio','credits':2000,'price':2000,'name':'Studio'},{'id':'filmmaker','credits':5000,'price':5000,'name':'Filmmaker'}])
+   for(final pack in const [
+    {'id':'pack_5k','credits':1000,'price':5000,'name':'1,000 Credits'},
+    {'id':'pack_10k','credits':2000,'price':10000,'name':'2,000 Credits'},
+    {'id':'pack_15k','credits':3000,'price':15000,'name':'3,000 Credits'},
+    {'id':'pack_20k','credits':4000,'price':20000,'name':'4,000 Credits'},
+    {'id':'pack_25k','credits':5000,'price':25000,'name':'5,000 Credits'},
+    {'id':'pack_30k','credits':6000,'price':30000,'name':'6,000 Credits'},
+    {'id':'pack_35k','credits':7000,'price':35000,'name':'7,000 Credits'},
+    {'id':'pack_40k','credits':8000,'price':40000,'name':'8,000 Credits'},
+    {'id':'pack_45k','credits':9000,'price':45000,'name':'9,000 Credits'},
+    {'id':'pack_50k','credits':10000,'price':50000,'name':'10,000 Credits'},
+    {'id':'pack_55k','credits':11000,'price':55000,'name':'11,000 Credits'},
+    {'id':'pack_60k','credits':12000,'price':60000,'name':'12,000 Credits'},
+   ])
     Card(color:const Color(0xFF17253A),child:ListTile(title:Text(pack['name'].toString(),style:const TextStyle(fontWeight:FontWeight.bold)),subtitle:Text(pack['credits'].toString()+' credits'),trailing:FilledButton(onPressed:purchaseBusy?null:(){Navigator.pop(ctx);buyCredits(pack['id'].toString());},child:Text('₦'+(pack['price'] as int).toString())))),
    const SizedBox(height:8),const Text('Credits are added only after Flutterwave confirms the payment.',style:TextStyle(color:Colors.white54,fontSize:12))
   ]))));
