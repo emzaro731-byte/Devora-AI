@@ -20,5 +20,64 @@ app.post('/api/chat', async (req,res)=>{
     res.json({reply:data.choices?.[0]?.message?.content || 'I could not generate a response.'});
   } catch (e) { res.status(500).json({error:'Could not reach the AI service. Please try again.'}); }
 });
+
+const fs = require('fs');
+const os = require('os');
+const crypto = require('crypto');
+const { spawn } = require('child_process');
+let ffmpegPath;
+try { ffmpegPath = require('ffmpeg-static'); } catch (_) { ffmpegPath = null; }
+const movieJobs = new Map();
+app.post('/api/movie/storyboard', async (req,res) => {
+  try {
+    const key=process.env.GROQ_API_KEY;
+    if(!key)return res.status(503).json({error:'GROQ_API_KEY is required to write a movie storyboard.'});
+    const prompt=typeof req.body.prompt==='string'?req.body.prompt.trim().slice(0,4000):'';
+    const count=Math.max(1,Math.min(60,Number.parseInt(req.body.count,10)||12));
+    const minutes=Math.max(1,Math.min(60,Number.parseInt(req.body.minutes,10)||1));
+    const mode=req.body.mode==='smart'?'smart':'full';
+    if(!prompt)return res.status(400).json({error:'Enter a movie idea.'});
+    const response=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.GROQ_MODEL||'openai/gpt-oss-120b',temperature:0.7,max_tokens:Math.min(8000,500+count*100),response_format:{type:'json_object'},messages:[{role:'system',content:'You are a film screenwriter and storyboard artist. Return valid JSON only, shaped as {"scenes":[{"title":"short title","description":"visual action for this scene","continuity":"details that should stay consistent","camera":"shot and camera movement","mood":"mood"}]}. Make scenes sequential, visually distinct, coherent, and keep characters, wardrobe and locations consistent. No markdown.'},{role:'user',content:'Create exactly '+count+' storyboard scenes for this movie concept: '+prompt+'. Target duration: '+minutes+' minutes. Production mode: '+mode+'. Each scene must be visually producible as one short clip or one keyframe image, with a beginning, progression, climax and ending.'}]})});
+    const data=await response.json();if(!response.ok)return res.status(response.status).json({error:data?.error?.message||'Storyboard model request failed.'});
+    let parsed;try{parsed=JSON.parse(data.choices?.[0]?.message?.content||'{}')}catch(_){return res.status(502).json({error:'AI returned an invalid storyboard. Please retry.'})}
+    if(!Array.isArray(parsed.scenes)||!parsed.scenes.length)return res.status(502).json({error:'AI did not return storyboard scenes.'});
+    res.json({scenes:parsed.scenes.slice(0,count)});
+  }catch(e){res.status(500).json({error:'Could not create storyboard. Please retry.'})}
+});
+function safeMovieUrl(value){try{const u=new URL(value);return u.protocol==='https:'&&!['localhost','127.0.0.1','0.0.0.0','::1'].includes(u.hostname)&&!u.hostname.endsWith('.local')}catch(_){return false}}
+function runFfmpeg(args){return new Promise((resolve,reject)=>{if(!ffmpegPath)return reject(new Error('FFmpeg is unavailable. Check the Render build logs.'));const child=spawn(ffmpegPath,args,{stdio:['ignore','ignore','pipe']});let err='';child.stderr.on('data',d=>{err+=d.toString();if(err.length>6000)err=err.slice(-6000)});child.on('error',reject);child.on('close',code=>code===0?resolve():reject(new Error(err.slice(-1200)||'FFmpeg failed')));})}
+async function downloadMovieAsset(url,dest){if(!safeMovieUrl(url))throw new Error('A scene URL was invalid.');const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),90000);try{const r=await fetch(url,{signal:controller.signal,redirect:'follow'});if(!r.ok)throw new Error('Could not download a generated scene (HTTP '+r.status+').');const type=(r.headers.get('content-type')||'').toLowerCase();if(!type.startsWith('video/')&&!type.startsWith('image/'))throw new Error('A generated scene URL did not return video or image media.');const bytes=Buffer.from(await r.arrayBuffer());if(bytes.length>100*1024*1024)throw new Error('A scene is larger than the 100 MB rendering limit.');await fs.promises.writeFile(dest,bytes);return type.startsWith('image/')?'image':'video'}finally{clearTimeout(timer)}}
+app.post('/api/movie/assemble',async(req,res)=>{
+ try{
+  if(!ffmpegPath)return res.status(503).json({error:'The MP4 renderer is not installed. Redeploy after ffmpeg-static is added.'});
+  const segments=Array.isArray(req.body.segments)?req.body.segments:[];
+  if(!segments.length||segments.length>360)return res.status(400).json({error:'Provide between 1 and 360 generated scenes.'});
+  for(const s of segments)if(!s||!safeMovieUrl(s.url)||!['image','video'].includes(s.mediaType))return res.status(400).json({error:'A scene URL or media type is invalid.'});
+  const id=crypto.randomUUID(),dir=path.join(os.tmpdir(),'devora-movie-'+id),publicDir=path.join(__dirname,'public','movie-renders');await fs.promises.mkdir(dir,{recursive:true});await fs.promises.mkdir(publicDir,{recursive:true});
+  const job={state:'queued',progress:0,url:null,error:null,createdAt:Date.now()};movieJobs.set(id,job);res.status(202).json({jobId:id,state:'queued'});
+  (async()=>{try{
+   const list=[];
+   for(let i=0;i<segments.length;i++){
+    job.state='rendering';job.progress=Math.round((i/segments.length)*70);
+    const s=segments[i],ext=s.mediaType==='image'?'jpg':'mp4',input=path.join(dir,'input-'+String(i).padStart(4,'0')+'.'+ext),output=path.join(dir,'segment-'+String(i).padStart(4,'0')+'.mp4');
+    const actual=await downloadMovieAsset(s.url,input);
+    if(actual==='image'){
+     const dur=Math.max(3,Math.min(3600,Number(s.durationSeconds)||5)),ratio=String(req.body.aspectRatio||'16:9'),w=ratio==='9:16'?720:1280,h=ratio==='9:16'?1280:ratio==='1:1'?720:720;
+     const vf='scale='+w+':'+h+':force_original_aspect_ratio=decrease,pad='+w+':'+h+':(ow-iw)/2:(oh-ih)/2,zoompan=z=min(zoom+0.0005\,1.08):d=1:s='+w+'x'+h+':fps=24,format=yuv420p';
+     await runFfmpeg(['-y','-loop','1','-i',input,'-t',String(dur),'-vf',vf,'-r','24','-c:v','libx264','-preset','ultrafast','-movflags','+faststart',output]);
+    }else{
+     const ratio=String(req.body.aspectRatio||'16:9'),w=ratio==='9:16'?720:1280,h=ratio==='9:16'?1280:ratio==='1:1'?720:720;
+     await runFfmpeg(['-y','-i',input,'-vf','scale='+w+':'+h+':force_original_aspect_ratio=decrease,pad='+w+':'+h+':(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24,format=yuv420p','-an','-c:v','libx264','-preset','ultrafast','-movflags','+faststart',output]);
+    }
+    list.push(output);job.progress=Math.round(((i+1)/segments.length)*70);
+   }
+   const concat=path.join(dir,'concat.txt');await fs.promises.writeFile(concat,list.map(f=>"file '"+f.replace(/'/g,"'\\''")+"'").join('\n'));
+   const target=path.join(publicDir,id+'.mp4');job.state='finalizing';await runFfmpeg(['-y','-f','concat','-safe','0','-i',concat,'-c','copy','-movflags','+faststart',target]);
+   job.state='completed';job.progress=100;job.url='/movie-renders/'+id+'.mp4';job.finishedAt=Date.now();
+  }catch(e){job.state='failed';job.error=e.message||'Movie rendering failed.';job.finishedAt=Date.now();console.error('Movie assembly failed:',e)}finally{setTimeout(()=>fs.promises.rm(dir,{recursive:true,force:true}).catch(()=>{}),60000)}})();
+ }catch(e){res.status(500).json({error:e.message||'Could not queue movie rendering.'})}
+});
+app.get('/api/movie/assemble/:id',(req,res)=>{const job=movieJobs.get(req.params.id);if(!job)return res.status(404).json({error:'Movie job not found; the server may have restarted.',state:'failed'});res.json({state:job.state,progress:job.progress,url:job.url,error:job.error})});
+
 const port = process.env.PORT || 3000;
 app.listen(port,'0.0.0.0',()=>console.log('Devora-AI running on '+port));
