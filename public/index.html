@@ -221,6 +221,17 @@ body{background:radial-gradient(ellipse at 50% -25%,#123d75 0,transparent 45%),r
 .studio-option-note{font-size:11px;color:#8195b3;margin:7px 1px 0;line-height:1.45}
 .studio-option-heading{font-size:12px;font-weight:700;color:#dbe8fa;display:block;margin:0 0 8px}
 .studio-option-chips{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 2px}
+/* Require authentication before showing the app */
+body.auth-required .app{display:none!important}
+body.auth-required #authModal{display:grid!important;z-index:9999;background:radial-gradient(ellipse at 50% 0%,#123b70 0,transparent 52%),rgba(2,7,17,.97)!important;backdrop-filter:blur(24px) saturate(150%)!important}
+body.auth-required #authClose{display:none!important}
+body.auth-required .auth-card{width:min(100%,420px);padding:30px;background:linear-gradient(155deg,rgba(12,27,49,.98),rgba(5,12,24,.99))!important;border:1px solid #398de755!important;box-shadow:0 28px 100px #0009,0 0 50px #167dff12!important}
+body.auth-required .auth-note{line-height:1.6}
+body.auth-required .auth-card h2{font-size:25px;letter-spacing:-.04em}
+body.auth-required .auth-card .logo{width:48px;height:48px;border-radius:15px;font-size:21px}
+body.auth-required .auth-card:before{content:'DEVORA AI · YOUR CREATIVE SPACE';display:block;text-align:center;color:#76baff;font-size:10px;font-weight:800;letter-spacing:.17em;margin:0 0 16px}
+body.auth-required #authMessage{min-height:20px;overflow-wrap:anywhere}
+@media(max-width:480px){body.auth-required .auth-card{padding:25px 21px;border-radius:22px}body.auth-required .auth-card h2{font-size:23px}}
 .studio-chip{border:1px solid #2a3c57;border-radius:999px;background:#0b1422;color:#a9bdd8;padding:6px 10px;font-size:11px}
 .studio-chip.active{border-color:#348de5;background:#12345b;color:#fff}
 @media(max-width:500px){.studio-options{grid-template-columns:1fr;gap:12px}}
@@ -320,8 +331,8 @@ function renderAnswer(value){
 function addMessage(role,text){const row=document.createElement('div');row.className='message '+role;const av=document.createElement('div');av.className='msg-avatar';av.textContent=role==='user'?'Y':'D';const body=document.createElement('div');body.className='message-body';const bubble=document.createElement('div');bubble.className='bubble';if(role==='assistant')bubble.innerHTML=renderAnswer(text);else bubble.textContent=text;body.append(bubble);if(role==='assistant'){const actions=document.createElement('div');actions.className='answer-actions'+(text==='Thinking…'?' hidden':'');actions.innerHTML='<button type="button" class="copy-answer" aria-label="Copy answer" title="Copy answer">▢ Copy</button><button type="button" class="answer-feedback" data-vote="up" aria-label="Helpful answer" title="Helpful">👍</button><button type="button" class="answer-feedback" data-vote="down" aria-label="Not helpful" title="Not helpful">👎</button><span class="answer-feedback-note" aria-live="polite"></span>';body.append(actions)}row.append(av,body);messagesEl.append(row);content.scrollTop=content.scrollHeight;return bubble}
 function setBusy(v){busy=v;$('#send').disabled=v;input.disabled=v}
 function openAuth(mode='signin'){authMode=mode;$('#authTitle').textContent=mode==='signup'?'Create your Devora-AI account':'Sign in to Devora-AI';$('#authSubmit').textContent=mode==='signup'?'Create account':'Sign in';$('#authSwitch').textContent=mode==='signup'?'Already have an account? Sign in':'Create an account';$('#authPassword').autocomplete=mode==='signup'?'new-password':'current-password';$('#authMessage').textContent='';$('#authModal').classList.remove('hidden')}
-function closeAuth(){$('#authModal').classList.add('hidden')}
-async function refreshAccount(){const {data}=await db.auth.getSession();currentUser=data.session?.user||null;$('#accountBtn').textContent=currentUser?'Sign out':'Sign in';$('#profileName').textContent=currentUser?(currentUser.user_metadata?.full_name||currentUser.email.split('@')[0]):'Devora-AI';$('#profileStatus').textContent=currentUser?currentUser.email:'AI assistant';await loadHistory()}
+function closeAuth(){if(!currentUser){document.body.classList.add('auth-required');$('#authModal').classList.remove('hidden');return}document.body.classList.remove('auth-required');$('#authModal').classList.add('hidden')}
+async function refreshAccount(){const {data}=await db.auth.getSession();currentUser=data.session?.user||null;$('#accountBtn').textContent=currentUser?'Sign out':'Sign in';$('#profileName').textContent=currentUser?(currentUser.user_metadata?.full_name||currentUser.email.split('@')[0]):'Devora-AI';$('#profileStatus').textContent=currentUser?currentUser.email:'AI assistant';if(currentUser){document.body.classList.remove('auth-required');$('#authModal').classList.add('hidden')}else{document.body.classList.add('auth-required');$('#authModal').classList.remove('hidden')}await loadHistory()}
 async function loadHistory(){const host=$('#history');host.innerHTML='';if(!currentUser){host.textContent='Sign in to sync your chats.';return}const {data,error}=await db.from('devora_conversations').select('id,title,updated_at').order('updated_at',{ascending:false}).limit(20);if(error){host.textContent='Could not load chat history.';return}if(!data.length){host.textContent='Your saved chats will appear here.';return}const list=document.createElement('div');list.className='history-list';data.forEach(item=>{const b=document.createElement('button');b.className='history-row';b.textContent=item.title||'New Chat';b.title=b.textContent;b.onclick=()=>openConversation(item.id);list.append(b)});host.append(list)}
 async function persistConversation(){if(!currentUser||!messages.length)return;const title=(messages.find(m=>m.role==='user')?.content||'New Chat').slice(0,70);const payload={user_id:currentUser.id,title,messages,updated_at:new Date().toISOString()};let result;if(conversationId){result=await db.from('devora_conversations').update(payload).eq('id',conversationId).select('id').single()}else{result=await db.from('devora_conversations').insert(payload).select('id').single();if(!result.error)conversationId=result.data.id}if(result.error)console.warn('Could not save Devora chat:',result.error.message);else await loadHistory()}
 async function openConversation(id){const {data,error}=await db.from('devora_conversations').select('id,title,messages').eq('id',id).single();if(error){alert('Could not open this conversation.');return}conversationId=data.id;messages=Array.isArray(data.messages)?data.messages:[];messagesEl.innerHTML='';showChat();messages.forEach(m=>addMessage(m.role,m.content));$('#sidebar').classList.remove('open')}
@@ -338,7 +349,7 @@ $('#form').addEventListener('submit',e=>{e.preventDefault();sendMessage(input.va
 function reset(){messages=[];conversationId=null;messagesEl.innerHTML='';messagesEl.classList.add('hidden');welcome.classList.remove('hidden');input.value='';}
 $('#newChat').onclick=()=>{reset();$('#sidebar').classList.remove('open');input.focus()};$('#menu').onclick=()=>$('#sidebar').classList.toggle('open');
 $('#accountBtn').onclick=async()=>{if(currentUser){await db.auth.signOut();currentUser=null;reset();await refreshAccount()}else openAuth()};
-$('#authClose').onclick=closeAuth;$('#authModal').addEventListener('click',e=>{if(e.target===$('#authModal'))closeAuth()});
+$('#authClose').onclick=closeAuth;$('#authModal').addEventListener('click',e=>{if(e.target===$('#authModal')&&!document.body.classList.contains('auth-required'))closeAuth()});
 $('#authSwitch').onclick=()=>openAuth(authMode==='signup'?'signin':'signup');
 $('#authForm').addEventListener('submit',async e=>{e.preventDefault();const email=$('#authEmail').value.trim(),password=$('#authPassword').value;const submit=$('#authSubmit'),note=$('#authMessage');submit.disabled=true;note.textContent='Please wait…';try{if(authMode==='signup'){const {data,error}=await db.auth.signUp({email,password});if(error)throw error;if(data.session){note.textContent='Account created. You are signed in.';await refreshAccount();setTimeout(closeAuth,700)}else{note.textContent='Account created. Check your email for a confirmation link, then sign in.'}}else{const {error}=await db.auth.signInWithPassword({email,password});if(error)throw error;await refreshAccount();closeAuth()}}catch(err){note.textContent=err.message||'Authentication failed.'}finally{submit.disabled=false}});
 db.auth.onAuthStateChange(()=>{setTimeout(()=>refreshAccount(),0)});
@@ -464,7 +475,7 @@ $('#mediaPrompt').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDe
 
 // Keyboard and small-screen interaction polish
 document.addEventListener('keydown',e=>{
- if(e.key==='Escape'){closeAuth();closeStudio();$('#sidebar').classList.remove('open')}
+ if(e.key==='Escape'){if(!document.body.classList.contains('auth-required'))closeAuth();closeStudio();$('#sidebar').classList.remove('open')}
 });
 document.addEventListener('click',e=>{
  const sidebar=$('#sidebar');
