@@ -46,7 +46,7 @@ class _MediaPageState extends State<MediaPage>{
  }
  Future<void> _autoVerifyPayment(String ref) async {
   for(var attempt=0;attempt<120;attempt++){
-   await Future.delayed(const Duration(seconds:5));
+   await Future.delayed(const Duration(seconds:1));
    if(!mounted||pendingReference!=ref)return;
    try{
     final d=await paymentCall({'action':'verify','reference':ref});
