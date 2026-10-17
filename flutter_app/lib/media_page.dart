@@ -99,8 +99,8 @@ class _MediaPageState extends State<MediaPage>{
    final hist=await http.post(Uri.parse(mediaSupabaseUrl+'/rest/v1/devora_conversations'),headers:{'apikey':mediaSupabaseKey,'Authorization':'Bearer '+widget.token,'Content-Type':'application/json','Prefer':'return=minimal'},body:jsonEncode({'user_id':uid,'title':title,'messages':messages,'updated_at':DateTime.now().toUtc().toIso8601String()}));
    if(hist.statusCode<200||hist.statusCode>=300)throw Exception('Media saved, but chat history save failed: '+hist.body);
    setState((){mediaUrl=display;status='Saved to Supabase Storage and chat history.';});
-  }catch(e){setState(()=>error=e.toString().replaceFirst('Exception: ',''));}
-  finally{if(mounted)setState(()=>busy=false);}
+  }catch(e){final message=e.toString().replaceFirst('Exception: ','');setState(()=>error=message);if(message.toLowerCase().contains('insufficient credit'))WidgetsBinding.instance.addPostFrameCallback((_) { if(mounted)showCreditPacks(); });}
+  finally{if(mounted)setState(()=>busy=false);await refreshBalance();}
  }
  @override void initState(){super.initState();refreshBalance();}
  @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.all(16),children:[
