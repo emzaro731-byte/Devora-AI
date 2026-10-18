@@ -5,90 +5,49 @@ app.use(express.json({limit:'1mb'}));
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/health', (_req,res)=>res.json({ok:true, app:'Devora-AI'}));
 
-const FLUTTERWAVE_PACKAGES = {5000:1000,10000:2000,15000:3000,20000:4000,25000:5000,30000:6000,35000:7000,40000:8000,45000:9000,50000:10000,55000:11000,60000:12000};
-async function verifySupabaseUserInternal(req) {
-  const base = (process.env.SUPABASE_URL || 'https://vihbsfrwnslnmheowkhy.supabase.co').replace(/\/$/, '');
-  const anon = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_HIMGxb-O6fj9O7OzT4ukuQ_jm5W8mWz';
-  const service = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-  const authorization = req.headers.authorization || '';
-  if (!/^Bearer\s+.+$/i.test(authorization)) throw new Error('Sign in to your Devora AI account first.');
-  if (!service) throw new Error('Payment backend is not configured: add SUPABASE_SERVICE_ROLE_KEY to Render for Flutterwave credit purchases. Media storage itself uses the Supabase Edge Function.');
-  const response = await fetch(base + '/auth/v1/user', {
-    headers: { apikey: anon, Authorization: authorization }
+// Flutterwave secrets and privileged payment operations live only in Supabase Edge Function Secrets.
+const SUPABASE_PAYMENT_URL = (process.env.SUPABASE_URL || 'https://vihbsfrwnslnmheowkhy.supabase.co').replace(/\/$/, '');
+const SUPABASE_PAYMENT_PUBLIC_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_HIMGxb-O6fj9O7OzT4ukuQ_jm5W8mWz';
+async function callSupabasePaymentFunction(action, body, authorization) {
+  const response = await fetch(SUPABASE_PAYMENT_URL + '/functions/v1/devora-credit-payments', {
+    method: 'POST',
+    headers: { apikey: SUPABASE_PAYMENT_PUBLIC_KEY, Authorization: authorization || '', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, ...(body || {}) }),
+    signal: AbortSignal.timeout(30000)
   });
-  const user = await response.json().catch(() => null);
-  if (!response.ok || !user || !user.id) throw new Error('Your Supabase session is invalid or expired. Please sign in again.');
-  return { base, service, user };
+  const payload = await response.json().catch(() => ({}));
+  return { response, payload };
 }
-async function supabaseRest(ctx, pathname, options={}) {
-  const response=await fetch(ctx.base+pathname,{...options,headers:{apikey:ctx.service,Authorization:'Bearer '+ctx.service,'Content-Type':'application/json',...(options.headers||{})}});
-  const text=await response.text();let data=null;try{data=text?JSON.parse(text):null}catch(_){}
-  if(!response.ok)throw new Error((data&& (data.message||data.error||data.hint))||'Supabase request failed.');
-  return data;
-}
-app.post('/api/payments/flutterwave/initialize',async(req,res)=>{
- try{
-  const ctx=await verifySupabaseUserInternal(req);
-  if(!process.env.FLW_SECRET_KEY)return res.status(503).json({error:'Flutterwave is not configured. Add FLW_SECRET_KEY to Render environment variables.'});
-  const amount=Number(req.body&&req.body.amountNgn),credits=FLUTTERWAVE_PACKAGES[amount];
-  if(!credits)return res.status(400).json({error:'Choose one of the available top-up packages.'});
-  const profile=await supabaseRest(ctx,'/auth/v1/user',{headers:{apikey:process.env.SUPABASE_ANON_KEY||process.env.SUPABASE_PUBLISHABLE_KEY,Authorization:req.headers.authorization}});
-  const reference='devora_'+ctx.user.id.replace(/-/g,'').slice(0,12)+'_'+crypto.randomUUID().replace(/-/g,'');
-  const pending=await supabaseRest(ctx,'/rest/v1/devora_credit_purchases',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({user_id:ctx.user.id,reference,amount_ngn:amount,credits,status:'pending',provider:'flutterwave'})});
-  const email=profile.email||ctx.user.email;
-  if(!email)throw new Error('Your account needs an email address before payment.');
-  const origin=(process.env.PUBLIC_APP_URL||'https://devora-ai-zcmz.onrender.com').replace(/\/$/,'');
-  const fw=await fetch('https://api.flutterwave.com/v3/payments',{method:'POST',headers:{Authorization:'Bearer '+process.env.FLW_SECRET_KEY,'Content-Type':'application/json'},body:JSON.stringify({tx_ref:reference,amount:String(amount),currency:'NGN',redirect_url:origin+'/?payment=flutterwave',customer:{email,name:profile.user_metadata?.full_name||profile.user_metadata?.name||'Devora AI user'},customizations:{title:'Devora AI Credits',description:credits+' generation credits',logo:origin+'/favicon.ico'},meta:{user_id:ctx.user.id,credits}})});
-  const data=await fw.json();
-  if(!fw.ok||data.status!=='success'||!data.data?.link){await supabaseRest(ctx,'/rest/v1/devora_credit_purchases?reference=eq.'+encodeURIComponent(reference),{method:'PATCH',body:JSON.stringify({status:'failed'})}).catch(()=>{});return res.status(502).json({error:data.message||'Flutterwave could not start checkout.'});}
-  res.json({success:true,checkoutUrl:data.data.link,reference,amountNgn:amount,credits});
- }catch(e){res.status(e.status||500).json({error:e.message||'Could not start payment.'});}
+app.post('/api/payments/flutterwave/initialize', async (req, res) => {
+  try {
+    const authorization = req.headers.authorization || '';
+    if (!/^Bearer\s+.+$/i.test(authorization)) return res.status(401).json({ error: 'Sign in to your Devora AI account first.' });
+    const { response, payload } = await callSupabasePaymentFunction('create', { amountNgn: Number(req.body?.amountNgn), packageId: req.body?.packageId }, authorization);
+    return res.status(response.status).json(payload);
+  } catch (e) { return res.status(502).json({ error: e.message || 'Could not reach Supabase payment service.' }); }
 });
-app.post('/api/payments/flutterwave/webhook',async(req,res)=>{
- try{
-  const expected=process.env.FLW_WEBHOOK_HASH||'';
-  const supplied=String(req.headers['verif-hash']||'');
-  if(!expected||!supplied||supplied.length!==expected.length||!require('crypto').timingSafeEqual(Buffer.from(supplied),Buffer.from(expected)))return res.status(401).send('Invalid webhook signature');
-  if(!process.env.FLW_SECRET_KEY)return res.status(503).send('Flutterwave not configured');
-  const payload=req.body||{},transactionId=String(payload.data?.id||'');
-  if(!transactionId)return res.status(200).json({received:true,ignored:true});
-  const verifyResponse=await fetch('https://api.flutterwave.com/v3/transactions/'+encodeURIComponent(transactionId)+'/verify',{headers:{Authorization:'Bearer '+process.env.FLW_SECRET_KEY,Accept:'application/json'}});
-  const verified=await verifyResponse.json(),tx=verified.data||{};
-  if(!verifyResponse.ok||verified.status!=='success'||tx.status!=='successful')return res.status(200).json({received:true,ignored:true});
-  const base=(process.env.SUPABASE_URL||'').replace(/\/$/,'');
-  const service=process.env.SUPABASE_SERVICE_ROLE_KEY||'';
-  if(!base||!service)return res.status(503).send('Supabase service role not configured');
-  const headers={apikey:service,Authorization:'Bearer '+service,'Content-Type':'application/json'};
-  const lookup=await fetch(base+'/rest/v1/devora_credit_purchases?select=*&reference=eq.'+encodeURIComponent(String(tx.tx_ref||'')),{headers});
-  const rows=await lookup.json(),purchase=Array.isArray(rows)?rows[0]:null;
-  if(!lookup.ok)return res.status(502).send('Could not look up purchase');
-  if(!purchase)return res.status(200).json({received:true,ignored:true});
-  if(String(tx.currency).toUpperCase()!=='NGN'||Math.round(Number(tx.amount))!==Math.round(Number(purchase.amount_ngn)))return res.status(200).json({received:true,ignored:true});
-  const done=await fetch(base+'/rest/v1/rpc/devora_complete_credit_purchase',{method:'POST',headers,body:JSON.stringify({p_reference:purchase.reference,p_user_id:purchase.user_id,p_amount_ngn:Number(tx.amount),p_transaction_id:String(tx.id)})});
-  if(!done.ok){console.error('Flutterwave webhook crediting failed:',(await done.text()).slice(0,300));return res.status(500).send('Credit fulfilment failed');}
-  return res.status(200).json({received:true,credited:true});
- }catch(e){console.error('Flutterwave webhook error:',e.message);return res.status(500).send('Webhook processing failed');}
+app.post('/api/payments/flutterwave/verify', async (req, res) => {
+  try {
+    const authorization = req.headers.authorization || '';
+    if (!/^Bearer\s+.+$/i.test(authorization)) return res.status(401).json({ error: 'Sign in to your Devora AI account first.' });
+    const reference = String(req.body?.tx_ref || req.body?.reference || '').trim();
+    if (!reference) return res.status(400).json({ error: 'Payment reference is required.' });
+    const { response, payload } = await callSupabasePaymentFunction('verify', { reference }, authorization);
+    return res.status(response.status).json(payload);
+  } catch (e) { return res.status(502).json({ error: e.message || 'Could not reach Supabase payment service.' }); }
 });
-app.post('/api/payments/flutterwave/verify',async(req,res)=>{
- try{
-  const ctx=await verifySupabaseUserInternal(req);
-  if(!process.env.FLW_SECRET_KEY)return res.status(503).json({error:'Flutterwave is not configured.'});
-  const transactionId=String(req.body?.transaction_id||'').trim(),reference=String(req.body?.tx_ref||'').trim();
-  if(!/^\d+$/.test(transactionId)||!/^devora_[a-zA-Z0-9_]+$/.test(reference))return res.status(400).json({error:'Invalid payment reference.'});
-  const purchases=await supabaseRest(ctx,'/rest/v1/devora_credit_purchases?select=*&reference=eq.'+encodeURIComponent(reference)+'&user_id=eq.'+encodeURIComponent(ctx.user.id),{});
-  const purchase=Array.isArray(purchases)?purchases[0]:null;
-  if(!purchase)return res.status(404).json({error:'Payment record not found for this account.'});
-  if(purchase.status==='successful')return res.json({success:true,alreadyProcessed:true,creditsAdded:purchase.credits,amountNgn:Number(purchase.amount_ngn)});
-  const response=await fetch('https://api.flutterwave.com/v3/transactions/'+encodeURIComponent(transactionId)+'/verify',{headers:{Authorization:'Bearer '+process.env.FLW_SECRET_KEY,Accept:'application/json'}});
-  const verification=await response.json(),tx=verification.data||{};
-  if(!response.ok||verification.status!=='success'||tx.status!=='successful'||String(tx.tx_ref)!==reference||String(tx.currency).toUpperCase()!=='NGN'||Math.round(Number(tx.amount))!==Math.round(Number(purchase.amount_ngn))){
-   return res.status(402).json({error:'Payment is not verified as successful for the exact amount. If you have paid, wait briefly and retry.'});
-  }
-  const completed=await supabaseRest(ctx,'/rest/v1/rpc/devora_complete_credit_purchase',{method:'POST',body:JSON.stringify({p_reference:reference,p_user_id:ctx.user.id,p_amount_ngn:Number(tx.amount),p_transaction_id:String(tx.id)})});
-  res.json({success:true,creditsAdded:completed?.creditsAdded??purchase.credits,balance:completed?.balance});
- }catch(e){res.status(e.status||500).json({error:e.message||'Could not verify payment.'});}
+app.post('/api/payments/flutterwave/webhook', async (req, res) => {
+  try {
+    const response = await fetch(SUPABASE_PAYMENT_URL + '/functions/v1/devora-flutterwave-webhook', {
+      method: 'POST',
+      headers: { apikey: SUPABASE_PAYMENT_PUBLIC_KEY, 'Content-Type': 'application/json', 'verif-hash': String(req.headers['verif-hash'] || '') },
+      body: JSON.stringify(req.body || {}),
+      signal: AbortSignal.timeout(30000)
+    });
+    const body = await response.text();
+    return res.status(response.status).type('text/plain').send(body);
+  } catch (e) { return res.status(502).send('Could not reach Supabase Flutterwave webhook.'); }
 });
-
 
 // Media storage is handled by Supabase Edge Function secrets, not Render service-role variables.
 const SUPABASE_PROJECT_URL = 'https://vihbsfrwnslnmheowkhy.supabase.co';
