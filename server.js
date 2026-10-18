@@ -6,6 +6,20 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/health', (_req,res)=>res.json({ok:true, app:'Devora-AI'}));
 
 const FLUTTERWAVE_PACKAGES = {5000:1000,10000:2000,15000:3000,20000:4000,25000:5000,30000:6000,35000:7000,40000:8000,45000:9000,50000:10000,55000:11000,60000:12000};
+async function verifySupabaseUser(req) {
+  const base = (process.env.SUPABASE_URL || 'https://vihbsfrwnslnmheowkhy.supabase.co').replace(/\\/$/, '');
+  const anon = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_HIMGxb-O6fj9O7OzT4ukuQ_jm5W8mWz';
+  const service = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  const authorization = req.headers.authorization || '';
+  if (!/^Bearer\\s+.+$/i.test(authorization)) throw new Error('Sign in to your Devora AI account first.');
+  if (!service) throw new Error('Payment backend is not configured: add SUPABASE_SERVICE_ROLE_KEY to Render for Flutterwave credit purchases. Media storage itself uses the Supabase Edge Function.');
+  const response = await fetch(base + '/auth/v1/user', {
+    headers: { apikey: anon, Authorization: authorization }
+  });
+  const user = await response.json().catch(() => null);
+  if (!response.ok || !user || !user.id) throw new Error('Your Supabase session is invalid or expired. Please sign in again.');
+  return { base, service, user };
+}
 async function supabaseRest(ctx, pathname, options={}) {
   const response=await fetch(ctx.base+pathname,{...options,headers:{apikey:ctx.service,Authorization:'Bearer '+ctx.service,'Content-Type':'application/json',...(options.headers||{})}});
   const text=await response.text();let data=null;try{data=text?JSON.parse(text):null}catch(_){}
