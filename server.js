@@ -76,98 +76,27 @@ app.post('/api/payments/flutterwave/verify',async(req,res)=>{
 });
 
 
-const dns = require('dns').promises;
-const net = require('net');
-const STORAGE_BUCKET = 'devora-assets';
-const STORAGE_MAX_BYTES = 200 * 1024 * 1024;
-function isPublicIp(ip) {
-  if (net.isIP(ip) === 4) {
-    const p=ip.split('.').map(Number);
-    return !(p[0]===10 || p[0]===127 || p[0]===0 || (p[0]===169&&p[1]===254) || (p[0]===172&&p[1]>=16&&p[1]<=31) || (p[0]===192&&p[1]===168) || (p[0]===100&&p[1]>=64&&p[1]<=127) || p[0]>=224);
-  }
-  if (net.isIP(ip) === 6) {
-    const x=ip.toLowerCase();
-    return x==='::1' ? false : !(x==='::' || x.startsWith('fe8') || x.startsWith('fe9') || x.startsWith('fea') || x.startsWith('feb') || x.startsWith('fc') || x.startsWith('fd') || x.startsWith('ff'));
-  }
-  return false;
-}
-function importHosts() {
-  return (process.env.STORAGE_IMPORT_HOSTS||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
-}
-async function validateImportUrl(raw) {
-  let u;
-  try { u=new URL(raw); } catch (_) { throw new Error('Invalid media URL.'); }
-  if (u.protocol!=='https:' || u.username || u.password || u.port && u.port!=='443') throw new Error('Only public HTTPS media URLs are supported.');
-  const host=u.hostname.toLowerCase();
-  const allowed=importHosts();
-  if (!allowed.some(h=>h.startsWith('*.') ? host.endsWith(h.slice(1)) && host!==h.slice(2) : host===h)) throw new Error('This media host is not allowed yet. Add its hostname to STORAGE_IMPORT_HOSTS in Render.');
-  const addresses=await dns.lookup(host,{all:true,verbatim:true});
-  if (!addresses.length || addresses.some(a=>!isPublicIp(a.address))) throw new Error('Media URL resolves to a non-public address and was blocked.');
-  return u;
-}
-async function fetchImportBytes(raw) {
-  let url=raw;
-  for(let hop=0;hop<=3;hop++) {
-    const u=await validateImportUrl(url);
-    const response=await fetch(u,{redirect:'manual',signal:AbortSignal.timeout(120000)});
-    if([301,302,303,307,308].includes(response.status)) {
-      const location=response.headers.get('location');
-      if(!location || hop===3) throw new Error('Too many or invalid media redirects.');
-      url=new URL(location,u).href;
-      continue;
-    }
-    if(!response.ok) throw new Error('Media provider returned HTTP '+response.status+'.');
-    const declared=Number(response.headers.get('content-length')||0);
-    if(declared>STORAGE_MAX_BYTES) throw new Error('Media is larger than the 200 MB storage-import limit.');
-    const type=(response.headers.get('content-type')||'application/octet-stream').split(';')[0].trim().toLowerCase();
-    const allowedType=/^(image\/(png|jpeg|webp|gif|avif)|video\/(mp4|webm|quicktime|mpeg)|audio\/(mpeg|mp4|wav|webm|ogg|aac|flac)|application\/(zip|pdf|json|octet-stream)|text\/(plain|csv|markdown|html|css|javascript))$/.test(type);
-    if(!allowedType) throw new Error('Unsupported media content type: '+type);
-    if(!response.body) throw new Error('Media provider returned an empty response.');
-    const chunks=[];let total=0;
-    for await (const chunk of response.body) { const b=Buffer.from(chunk);total+=b.length;if(total>STORAGE_MAX_BYTES){response.body.cancel().catch(()=>{});throw new Error('Media is larger than the 200 MB storage-import limit.');}chunks.push(b); }
-    if(!total) throw new Error('The media file is empty.');
-    return {buffer:Buffer.concat(chunks),type,size:total,url:u.href};
-  }
-  throw new Error('Could not safely fetch the media URL.');
-}
-async function verifySupabaseUser(req) {
-  const base=(process.env.SUPABASE_URL||'').replace(/\/$/,'');
-  const anon=process.env.SUPABASE_ANON_KEY||process.env.SUPABASE_PUBLISHABLE_KEY||'';
-  const service=process.env.SUPABASE_SERVICE_ROLE_KEY||'';
-  const auth=(req.headers.authorization||'').match(/^Bearer\s+(.+)$/i);
-  if(!base||!anon||!service) throw Object.assign(new Error('Supabase server storage is not configured. Add SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY to Render environment variables.'),{status:503});
-  if(!auth) throw Object.assign(new Error('Sign in again to save this file.'),{status:401});
-  const r=await fetch(base+'/auth/v1/user',{headers:{apikey:anon,Authorization:'Bearer '+auth[1]}});
-  if(!r.ok) throw Object.assign(new Error('Your session is invalid or expired. Sign in again.'),{status:401});
-  const user=await r.json();if(!user||!user.id)throw Object.assign(new Error('Could not verify the signed-in user.'),{status:401});
-  return {base,service,user};
-}
-app.get('/api/storage/health',(_req,res)=>{
-  res.json({ok:true,configured:!!(process.env.SUPABASE_URL&&(process.env.SUPABASE_ANON_KEY||process.env.SUPABASE_PUBLISHABLE_KEY)&&process.env.SUPABASE_SERVICE_ROLE_KEY),bucket:STORAGE_BUCKET,importHostsConfigured:importHosts().length>0,maxImportBytes:STORAGE_MAX_BYTES});
+// Media storage is handled by Supabase Edge Function secrets, not Render service-role variables.
+const SUPABASE_PROJECT_URL = 'https://vihbsfrwnslnmheowkhy.supabase.co';
+const SUPABASE_PUBLIC_KEY = 'sb_publishable_HIMGxb-O6fj9O7OzT4ukuQ_jm5W8mWz';
+app.get('/api/storage/health', (_req,res) => {
+  res.json({ok:true, configured:true, provider:'supabase-edge-function', bucket:'devora-assets', maxImportBytes:200*1024*1024});
 });
-app.post('/api/storage/import',async(req,res)=>{
-  let uploadedPath=null;let storageContext=null;
+app.post('/api/storage/import', async (req,res) => {
   try {
-    storageContext=await verifySupabaseUser(req);
-    const {url,name,assetType,metadata}=req.body||{};
-    if(typeof url!=='string'||url.length>4096) return res.status(400).json({error:'Provide a valid media URL.'});
-    const validTypes=['upload','generated_image','generated_video','generated_music','movie','other'];
-    const kind=validTypes.includes(assetType)?assetType:'other';
-    const media=await fetchImportBytes(url);
-    const rawName=typeof name==='string'?name:'asset';
-    const clean=rawName.replace(/[^a-zA-Z0-9._-]/g,'_').slice(-140)||'asset';
-    const objectPath=storageContext.user.id+'/'+Date.now()+'-'+crypto.randomUUID()+'-'+clean;
-    const upload=await fetch(storageContext.base+'/storage/v1/object/'+STORAGE_BUCKET+'/'+objectPath.split('/').map(encodeURIComponent).join('/'),{
-      method:'POST',headers:{apikey:storageContext.service,Authorization:'Bearer '+storageContext.service,'Content-Type':media.type,'x-upsert':'false'},body:media.buffer,signal:AbortSignal.timeout(120000)
+    const authorization = req.headers.authorization || '';
+    if (!/^Bearer\\s+.+$/i.test(authorization)) return res.status(401).json({error:'Sign in again to save this file.'});
+    const response = await fetch(SUPABASE_PROJECT_URL + '/functions/v1/devora-storage-import', {
+      method:'POST',
+      headers:{apikey:SUPABASE_PUBLIC_KEY, Authorization:authorization, 'Content-Type':'application/json'},
+      body:JSON.stringify(req.body || {}),
+      signal:AbortSignal.timeout(130000)
     });
-    if(!upload.ok) { const t=(await upload.text()).slice(0,500);throw new Error('Supabase Storage upload failed: '+t); }
-    uploadedPath=objectPath;
-    const row={user_id:storageContext.user.id,bucket_id:STORAGE_BUCKET,object_path:objectPath,asset_type:kind,mime_type:media.type,original_name:rawName.slice(0,255),size_bytes:media.size,metadata:{...(metadata&&typeof metadata==='object'&&!Array.isArray(metadata)?metadata:{}),source_url:media.url,stored_server_side:true}};
-    const saved=await fetch(storageContext.base+'/rest/v1/devora_assets',{method:'POST',headers:{apikey:storageContext.service,Authorization:'Bearer '+storageContext.service,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify(row)});
-    if(!saved.ok) { await fetch(storageContext.base+'/storage/v1/object/'+STORAGE_BUCKET+'/'+objectPath.split('/').map(encodeURIComponent).join('/'),{method:'DELETE',headers:{apikey:storageContext.service,Authorization:'Bearer '+storageContext.service}}).catch(()=>{});uploadedPath=null;throw new Error('File uploaded, but its library record could not be saved: '+(await saved.text()).slice(0,400)); }
-    const rows=await saved.json();
-    res.status(201).json({ok:true,asset:rows[0],path:objectPath,size:media.size,mimeType:media.type});
-  } catch(e) { res.status(e.status||500).json({error:e.message||'Could not save media to Supabase.'}); }
+    const body = await response.text();
+    res.status(response.status).type('application/json').send(body);
+  } catch (e) {
+    res.status(502).json({error:e.message || 'Could not reach the Supabase storage function.'});
+  }
 });
 
 app.post('/api/chat', async (req,res)=>{
