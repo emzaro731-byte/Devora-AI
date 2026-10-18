@@ -221,7 +221,7 @@ async function backgroundMediaWorker(job) {
 }
 app.post('/api/background-media-jobs', (req, res) => {
   const authorization = req.headers.authorization || '';
-  if (!/^Bearer\\s+.+$/i.test(authorization)) return res.status(401).json({ error: 'Sign in to Devora AI before starting a background task.' });
+  if (!/^Bearer\s+.+$/i.test(authorization)) return res.status(401).json({ error: 'Sign in to Devora AI before starting a background task.' });
   const taskId = String(req.body?.taskId || '').trim();
   const requestId = String(req.body?.requestId || '').trim();
   const type = String(req.body?.type || '').toLowerCase();
