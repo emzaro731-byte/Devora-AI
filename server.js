@@ -216,7 +216,7 @@ app.post('/api/background-media-jobs', (req, res) => {
   const taskId = String(req.body?.taskId || '').trim();
   const requestId = String(req.body?.requestId || '').trim();
   const type = String(req.body?.type || '').toLowerCase();
-  if (!taskId || !requestId || !['image', 'video', 'music'].includes(type)) return res.status(400).json({ error: 'taskId, requestId, and a valid media type are required.' });
+  if (!taskId || !['image', 'video', 'music'].includes(type)) return res.status(400).json({ error: 'taskId and a valid media type are required.' });
   const existing = [...backgroundMediaJobs.values()].find(j => j.taskId === taskId && j.requestId === requestId);
   if (existing) return res.status(202).json({ jobId: existing.id, state: existing.state });
   const id = crypto.randomUUID();
