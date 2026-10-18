@@ -20,8 +20,7 @@
 <div class="app">
 <header class="topbar">
   <div class="brand" aria-label="Devora AI">◢</div><div class="spacer"></div>
-  <button class="icon-btn" aria-label="Rewards" data-action="rewards">🎁</button>
-  <div class="credit-pill"><span class="bolt">ϟ</span><span id="creditCount">—</span><button class="subscribe" data-action="subscribe">Subscribe</button></div>
+  <div class="credit-pill" aria-label="Available credits"><span class="bolt">ϟ</span><span id="creditCount">—</span></div>
 </header>
 <main class="page">
 <section id="createView" class="view active">
@@ -47,7 +46,7 @@
     </div>
   <div class="account-panel"><h3>Your account</h3><p class="hint">Your generated media is shown below. Account credits come from the connected generation service.</p><button class="edit" data-action="settings">Account settings</button></div>
   <div class="profile-tabs"><button class="profile-tab selected" data-profile-tab="gallery">▱</button><button class="profile-tab" data-profile-tab="saved">☆</button><button class="profile-tab" data-profile-tab="projects">▦</button></div>
-  <div class="media-switch"><button class="switch selected" data-filter="Video">Video</button><button class="switch" data-filter="Image">Image</button></div>
+  <div class="media-switch"><button class="switch selected" data-filter="Video">Video</button><button class="switch" data-filter="Image">Image</button><button class="switch" data-filter="Music">Music</button></div>
   <div class="gallery" id="gallery"></div>
 </section>
 </main>
