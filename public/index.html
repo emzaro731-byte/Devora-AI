@@ -517,7 +517,7 @@ async function resumeBackgroundJobs(){
     // Render's in-memory job map is cleared on restart. Re-attach the provider task using
     // task/request IDs saved in this browser and the current signed-in session.
     let recovered=false;
-    if(j.taskId&&j.requestId&&supabaseClient){
+    if(j.taskId&&supabaseClient){
      try{
       const auth=await supabaseClient.auth.getSession();
       const token=auth?.data?.session?.access_token;
@@ -528,7 +528,7 @@ async function resumeBackgroundJobs(){
       }
      }catch(recoveryError){console.warn('Background job recovery failed',recoveryError)}
     }
-    if(!recovered){j.state='failed';j.lastError=j.requestId?'The service restarted and this task could not be reattached. Sign in again and retry checking the task.':'This older task has no saved request ID, so automatic recovery is unavailable.';writeBackgroundJobs(readBackgroundJobs().map(x=>x.jobId===j.jobId?j:x));changed=true;}
+    if(!recovered){j.state='failed';j.lastError='The service restarted and this task could not be reattached. Sign in again and retry checking the task.';writeBackgroundJobs(readBackgroundJobs().map(x=>x.jobId===j.jobId?j:x));changed=true;}
    }else if(d.state==='failed'){
     j.state='failed';j.lastError=d.error||'Background generation failed';writeBackgroundJobs(readBackgroundJobs().map(x=>x.jobId===j.jobId?j:x));changed=true;
    }else{
