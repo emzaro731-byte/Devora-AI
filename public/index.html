@@ -1096,7 +1096,7 @@ async function generateMedia(){
     else if(type==='video'){const video=document.createElement('video');video.src=url;video.controls=true;video.playsInline=true;result.append(video)}
     else {const audio=document.createElement('audio');audio.src=url;audio.controls=true;result.append(audio)}
     const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener';link.textContent='Open or download generated '+type;link.style.display='inline-block';link.style.marginTop='8px';result.append(link);
-    status.textContent='Your '+type+' is ready.';
+    status.textContent='Your '+type+' is ready.'+(finalData.exactChargeApplied&&finalData.creditsConsumed!==null?' KIE.ai used '+finalData.creditsConsumed+' credits; Devora charged '+Math.ceil(finalData.creditsConsumed)+' credits.':' KIE.ai actual usage was not returned, so the reserved estimate remains charged.');
     if(inStudio){studioFiles=[];renderFileChips($('#studioAttachments'),studioFiles,()=>studioFiles,'studio')}else{mediaFiles=[];renderFileChips($('#mediaAttachments'),mediaFiles,()=>mediaFiles,'media')}
   }catch(error){status.textContent=error.message||'Generation failed.';await refreshMediaCredits()}
   finally{button.disabled=false}
