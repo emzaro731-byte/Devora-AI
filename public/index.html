@@ -318,17 +318,46 @@ async function readKieBalance(){
  return n;
 }
 function estimateGenerationCredits(model,type){
- if(type==='video'&&model==='bytedance/seedance-2-5'){
-  const rates={'480p':28,'720p':63,'1080p':158};
-  return Math.ceil((rates[$('#resolution')?.value]||63)*Math.max(5,Math.min(15,Number($('#duration')?.value)||10)));
+ const duration=Math.max(1,Number($('#duration')?.value)||10);
+ if(type==='video'){
+  // Seedance's configured per-second rates are resolution-specific. Long movies are
+  // split into <=15s scenes, with a minimum 5s final scene.
+  if(model==='bytedance/seedance-2-5'){
+   const rates={'480p':28,'720p':63,'1080p':158};
+   const rate=rates[$('#resolution')?.value]||63;
+   const scenes=Math.ceil(duration/15);
+   let seconds=0,remaining=duration;
+   for(let i=0;i<scenes;i++){const part=Math.min(15,remaining);seconds+=Math.max(5,part);remaining-=part;}
+   return Math.ceil(rate*seconds);
+  }
+  // For other video models, the existing model figure is only a 10-second
+  // reference estimate; scale it to the requested duration, not a provider quote.
+  const tenSecondReference=DEVORA_ESTIMATED_COSTS[model];
+  return tenSecondReference==null?null:Math.ceil(tenSecondReference*(duration/10));
  }
  return DEVORA_ESTIMATED_COSTS[model]||null;
+}
+function renderCreditEstimatePreview(){
+ const box=$('#generationCreditEstimate');if(!box)return;
+ const model=$('#modelSelect')?.value;
+ const modelLabel=$('#modelSelect')?.selectedOptions?.[0]?.textContent||model||'Selected model';
+ const duration=Number($('#duration')?.value)||0;
+ const resolution=$('#resolution')?.value;
+ const required=estimateGenerationCredits(model,type);
+ box.innerHTML='<b>Credit estimate · '+escapeAttr(modelLabel)+'</b><br>'+
+  (type==='video'?'Duration: <b>'+duration+' seconds</b> · Resolution: <b>'+escapeAttr(resolution||'default')+'</b><br>':'')+
+  'Estimated credits needed: <b>'+(required===null?'Unavailable for this model':required.toLocaleString('en-NG')+' credits')+'</b>'+
+  '<br><small style="opacity:.78">Estimate only, not a guaranteed KIE.ai quote. Actual usage may vary by model options and provider pricing. Live balance is checked before generation.</small>';
 }
 function ensureCreditEstimateUI(){
  if($('#generationCreditEstimate'))return;
  const box=document.createElement('div');box.id='generationCreditEstimate';
  box.style.cssText='margin:12px 0;padding:12px 14px;border:1px solid rgba(125,170,255,.35);border-radius:14px;background:rgba(15,30,55,.72);line-height:1.6';
  const btn=$('#generateBtn');btn.parentElement.insertBefore(box,btn);
+ if($('#modelSelect'))$('#modelSelect').addEventListener('change',renderCreditEstimatePreview);
+ if($('#duration'))$('#duration').addEventListener('change',renderCreditEstimatePreview);
+ if($('#resolution'))$('#resolution').addEventListener('change',renderCreditEstimatePreview);
+ renderCreditEstimatePreview();
 }
 function showCreditEstimate(required,balance,exact=false){
  ensureCreditEstimateUI();const box=$('#generationCreditEstimate');
