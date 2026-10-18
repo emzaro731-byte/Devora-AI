@@ -736,11 +736,11 @@ function action(a){if(a==='edit')openModal('Edit Profile','<label class="hint">D
 document.addEventListener('click',function devoraButtonRecovery(event){
  const el=event.target.closest('button,[role="button"]');if(!el||el.disabled)return;
  const run=(fn)=>{event.preventDefault();event.stopImmediatePropagation();try{fn()}catch(err){console.error('Devora button action failed:',err);if(typeof toast==='function')toast(err.message||'This action failed. Please try again.')}};
- if(el.matches('[data-view]'))return run(()=>{$('.view').forEach(v=>v.classList.remove('active'));const view=$('#'+el.dataset.view);if(view)view.classList.add('active');$('[data-view]').forEach(x=>x.classList.toggle('active',x===el));if(el.dataset.view==='meView')renderGallery();window.scrollTo({top:0,behavior:'smooth'})});
+ if(el.matches('[data-view]'))return run(()=>{$$('.view').forEach(v=>v.classList.remove('active'));const view=$('#'+el.dataset.view);if(view)view.classList.add('active');$$('[data-view]').forEach(x=>x.classList.toggle('active',x===el));if(el.dataset.view==='meView')renderGallery();window.scrollTo({top:0,behavior:'smooth'})});
  if(el.matches('[data-studio]'))return run(()=>openStudio(el.dataset.studio));
  if(el.matches('[data-action]'))return run(()=>action(el.dataset.action));
- if(el.matches('[data-filter]'))return run(()=>{currentFilter=el.dataset.filter;$('[data-filter]').forEach(x=>x.classList.toggle('selected',x===el));renderGallery()});
- if(el.matches('[data-profile-tab]'))return run(()=>{profileTab=el.dataset.profileTab;$('[data-profile-tab]').forEach(x=>x.classList.toggle('selected',x===el));renderGallery()});
+ if(el.matches('[data-filter]'))return run(()=>{currentFilter=el.dataset.filter;$$('[data-filter]').forEach(x=>x.classList.toggle('selected',x===el));renderGallery()});
+ if(el.matches('[data-profile-tab]'))return run(()=>{profileTab=el.dataset.profileTab;$$('[data-profile-tab]').forEach(x=>x.classList.toggle('selected',x===el));renderGallery()});
  if(el.id==='createMenuButton')return run(()=>openModal('What would you like to create?','<p class="hint">Choose a creative studio to get started.</p><div class="create-choice-grid"><button type="button" class="create-choice" data-create-choice="Create Image">Create Image</button><button type="button" class="create-choice" data-create-choice="Text to Video">Create Video</button><button type="button" class="create-choice" data-create-choice="Music Generation">Create Music</button></div>'));
  if(el.id==='topUpButton'||el.id==='topUpButtonHome')return run(()=>openTopUp());
  if(el.id==='closeModal')return run(()=>closeModal());
@@ -748,7 +748,7 @@ document.addEventListener('click',function devoraButtonRecovery(event){
  if(el.id==='saveProfile')return run(()=>updateProfile());
  if(el.id==='signOutBtn')return run(()=>{if(supabaseClient)supabaseClient.auth.signOut();session=null;closeModal();openAuth('Sign in to Devora AI')});
 },true);
-$('[data-view]').forEach(b=>b.addEventListener('click',()=>{$$('.view').forEach(v=>v.classList.remove('active'));const target=$('#'+b.dataset.view);if(target)target.classList.add('active');$$('[data-view]').forEach(n=>n.classList.toggle('active',n===b));window.scrollTo({top:0,behavior:'smooth'});document.title=b.dataset.view==='meView'?'Devora AI — Library':'Devora AI — Create';if(b.dataset.view==='meView')renderGallery()}));
+$$('[data-view]').forEach(b=>b.addEventListener('click',()=>{$$('.view').forEach(v=>v.classList.remove('active'));const target=$('#'+b.dataset.view);if(target)target.classList.add('active');$$('[data-view]').forEach(n=>n.classList.toggle('active',n===b));window.scrollTo({top:0,behavior:'smooth'});document.title=b.dataset.view==='meView'?'Devora AI — Library':'Devora AI — Create';if(b.dataset.view==='meView')renderGallery()}));
 $$('[data-studio]').forEach(b=>b.addEventListener('click',()=>openStudio(b.dataset.studio)));
 $$('[data-action]').forEach(b=>b.addEventListener('click',()=>action(b.dataset.action)));
 $$('[data-filter]').forEach(b=>b.addEventListener('click',()=>{currentFilter=b.dataset.filter;$$('[data-filter]').forEach(x=>x.classList.toggle('selected',x===b));renderGallery()}));
