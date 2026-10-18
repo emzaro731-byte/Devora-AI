@@ -300,7 +300,7 @@ async function handleFlutterwaveReturn(){
   await loadCredits();toast('Payment confirmed! '+(result.creditsAdded||'Your')+' credits added.');
  }catch(e){toast(e.message||'Payment verification pending. Tap Top up and contact support if it persists.')}
 }
-async function loadCredits(){if(!session||!supabaseClient)return;try{const {data,error}=await supabaseClient.functions.invoke('devora-media',{body:{action:'credits'}});if(error)throw error;if(data?.success){const raw=typeof data.balance==='number'?data.balance:(data.balance?.balance??data.balance?.credits??'—');const n=Number(raw);const shown=Number.isFinite(n)?n.toLocaleString('en-NG',{maximumFractionDigits:2}):String(raw);const main=$('#creditCount'),legacy=$('#creditCountLegacy');if(main){main.textContent=shown+' KIE credits';main.title='Live remaining balance from your KIE.ai account';main.setAttribute('aria-label',shown+' KIE.ai credits remaining')}if(legacy){legacy.textContent=shown+' KIE credits';legacy.title='Live remaining balance from your KIE.ai account'}}}catch(e){console.warn('Could not load KIE credits:',e.message)}}
+async function loadCredits(){if(!session||!supabaseClient)return;try{const {data,error}=await supabaseClient.functions.invoke('devora-media',{body:{action:'wallet'}});if(error)throw error;if(data?.success){const raw=typeof data.balance==='number'?data.balance:(data.balance?.balance??data.balance?.credits??'—');const n=Number(raw);const shown=Number.isFinite(n)?n.toLocaleString('en-NG',{maximumFractionDigits:2}):String(raw);const main=$('#creditCount'),legacy=$('#creditCountLegacy');if(main){main.textContent=shown+' KIE credits';main.title='Your Devora AI generation credit balance';main.setAttribute('aria-label',shown+' Devora credits remaining')}if(legacy){legacy.textContent=shown+' KIE credits';legacy.title='Your Devora AI generation credit balance'}}}catch(e){console.warn('Could not load KIE credits:',e.message)}}
 async function functionError(error){try{if(error&&typeof error.context?.json==='function'){const body=await error.context.json();if(body?.error)return body.error;if(body?.message)return body.message}}catch(_){}return error?.message||'Request failed. Please try again.'}
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>t.classList.remove('show'),2600)}
 function openModal(title,html){$('#modalTitle').textContent=title;$('#modalBody').innerHTML=html;$('#modalBackdrop').classList.add('open')}
@@ -330,7 +330,7 @@ function openStudio(name){
  'V6':12,'V6_MINI':10,'V6_WILD':12
 };
 async function readKieBalance(){
- const {data,error}=await supabaseClient.functions.invoke('devora-media',{body:{action:'credits'}});
+ const {data,error}=await supabaseClient.functions.invoke('devora-media',{body:{action:'wallet'}});
  if(error)throw new Error(await functionError(error));
  const n=Number(data?.balance);
  if(!data?.success||!Number.isFinite(n))throw new Error(data?.error||'Could not verify your live KIE.ai balance. Please try again.');
@@ -380,14 +380,14 @@ function ensureCreditEstimateUI(){
 }
 function showCreditEstimate(required,balance,exact=false){
  ensureCreditEstimateUI();const box=$('#generationCreditEstimate');
- if(required===null){box.innerHTML='Estimated required credits: <b>not available for this model</b><br>Live KIE.ai balance: <b>'+balance.toLocaleString('en-NG')+' credits</b><br><span style="opacity:.8">The provider determines the final charge. Balance will be checked before generation.</span>';return}
+ if(required===null){box.innerHTML='Estimated required credits: <b>not available for this model</b><br>Your Devora balance: <b>'+balance.toLocaleString('en-NG')+' credits</b><br><span style="opacity:.8">The provider determines the final charge. Balance will be checked before generation.</span>';return}
  const enough=balance>=required;
- box.innerHTML='Estimated credits needed: <b>'+required.toLocaleString('en-NG')+' credits</b><br>Live KIE.ai balance: <b>'+balance.toLocaleString('en-NG')+' credits</b><br><span style="color:'+(enough?'#8ff0bc':'#ff9ca8')+'">'+(enough?'Balance appears sufficient.':'Not enough credits — top up KIE.ai before generating.')+'</span><br><small style="opacity:.75">'+(exact?'Provider-confirmed usage.':'Estimate only; final usage may vary by model and settings.')+'</small>';
+ box.innerHTML='Estimated credits needed: <b>'+required.toLocaleString('en-NG')+' credits</b><br>Live KIE.ai balance: <b>'+balance.toLocaleString('en-NG')+' credits</b><br><span style="color:'+(enough?'#8ff0bc':'#ff9ca8')+'">'+(enough?'Balance appears sufficient.':'Not enough credits — top up your Devora balance before generating.')+'</span><br><small style="opacity:.75">'+(exact?'Provider-confirmed usage.':'Estimate only; final usage may vary by model and settings.')+'</small>';
 }
 $('#generateBtn').onclick=async()=>{
   const prompt=$('#promptInput')?.value.trim();if(!prompt){toast('Describe your idea first.');return}
   const btn=$('#generateBtn'),status=$('#generationStatus'),model=$('#modelSelect').value,requestId=crypto.randomUUID();
-  btn.disabled=true;btn.textContent='Checking credits…';status.textContent='Checking your live KIE.ai balance…';
+  btn.disabled=true;btn.textContent='Checking credits…';status.textContent='Checking your Devora credit balance…';
   try{
    const balance=await readKieBalance();
    const required=estimateGenerationCredits(model,type);
