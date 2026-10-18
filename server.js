@@ -169,7 +169,7 @@ async function backgroundMediaWorker(job) {
     job.state = 'processing';
     const deadline = Date.now() + 45 * 60 * 1000;
     while (Date.now() < deadline) {
-      await new Promise(resolve => setTimeout(resolve, 2200));
+      await new Promise(resolve => setTimeout(resolve, 800)); // Faster completion detection; provider rendering speed is controlled by KIE.ai.
       const result = await mediaEdgeCall({ action: 'status', taskId: job.taskId, requestId: job.requestId }, job.authorization);
       const state = String(result.state || 'processing').toLowerCase();
       job.progress = result.progress ?? job.progress ?? 0;
