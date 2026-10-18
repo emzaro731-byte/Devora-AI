@@ -513,8 +513,24 @@ async function resumeBackgroundJobs(){
     saveGenerated({type:j.type,title:j.title,model:j.model,taskId:j.taskId,url:d.url,storagePath:d.storagePath,createdAt:j.createdAt||new Date().toISOString()});
     const current=readBackgroundJobs().filter(x=>x.jobId!==j.jobId);writeBackgroundJobs(current);changed=true;
     toast('Background '+j.type+' generation is ready in your Library!');
-   }else if(d.state==='failed'||d.state==='not_found'){
-    j.state='failed';j.lastError=d.error||'Background job could not be recovered';writeBackgroundJobs(readBackgroundJobs().map(x=>x.jobId===j.jobId?j:x));changed=true;
+   }else if(d.state==='not_found'){
+    // Render's in-memory job map is cleared on restart. Re-attach the provider task using
+    // task/request IDs saved in this browser and the current signed-in session.
+    let recovered=false;
+    if(j.taskId&&j.requestId&&supabaseClient){
+     try{
+      const auth=await supabaseClient.auth.getSession();
+      const token=auth?.data?.session?.access_token;
+      if(token){
+       const rr=await fetch('/api/background-media-jobs',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({taskId:j.taskId,requestId:j.requestId,type:j.type,prompt:j.prompt||'',model:j.model||''})});
+       const rd=await rr.json();
+       if(rr.ok&&rd.jobId){const oldJobId=j.jobId;j.jobId=rd.jobId;j.state=rd.state||'queued';delete j.lastError;writeBackgroundJobs(readBackgroundJobs().map(x=>x.jobId===oldJobId||x.taskId===j.taskId?j:x));changed=true;recovered=true;}
+      }
+     }catch(recoveryError){console.warn('Background job recovery failed',recoveryError)}
+    }
+    if(!recovered){j.state='failed';j.lastError=j.requestId?'The service restarted and this task could not be reattached. Sign in again and retry checking the task.':'This older task has no saved request ID, so automatic recovery is unavailable.';writeBackgroundJobs(readBackgroundJobs().map(x=>x.jobId===j.jobId?j:x));changed=true;}
+   }else if(d.state==='failed'){
+    j.state='failed';j.lastError=d.error||'Background generation failed';writeBackgroundJobs(readBackgroundJobs().map(x=>x.jobId===j.jobId?j:x));changed=true;
    }else{
     j.state=d.state||'processing';j.progress=d.progress??j.progress;writeBackgroundJobs(readBackgroundJobs().map(x=>x.jobId===j.jobId?j:x));changed=true;
    }
@@ -720,7 +736,7 @@ $('#generateBtn').onclick=async()=>{
    // continue if this modal is closed or the browser tab is backgrounded.
    const handoff=await fetch('/api/background-media-jobs',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({taskId:data.taskId,requestId:data.requestId||requestId,type,prompt:payload.prompt||prompt,model})});
    const handoffData=await handoff.json();if(!handoff.ok||!handoffData.jobId)throw new Error(handoffData.error||'Could not start background processing.');
-   const savedJobs=readBackgroundJobs();savedJobs.push({jobId:handoffData.jobId,taskId:data.taskId,type,title:name,model,createdAt:new Date().toISOString()});writeBackgroundJobs(savedJobs);renderBackgroundHistory();
+   const savedJobs=readBackgroundJobs();savedJobs.push({jobId:handoffData.jobId,taskId:data.taskId,requestId:data.requestId||requestId,type,title:name,model,createdAt:new Date().toISOString()});writeBackgroundJobs(savedJobs);renderBackgroundHistory();
    status.textContent='Queued successfully. Devora AI will continue generating and saving this '+type+' in the background, even if you close this window or leave the page. You can check Library when you return.';
    btn.textContent='Queued in background ✓';
    btn.disabled=false;
