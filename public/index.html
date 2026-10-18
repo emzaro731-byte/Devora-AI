@@ -663,24 +663,13 @@ $('#generateBtn').onclick=async()=>{
    const handoff=await fetch('/api/background-media-jobs',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({taskId:data.taskId,requestId:data.requestId||requestId,type,prompt:payload.prompt||prompt,model})});
    const handoffData=await handoff.json();if(!handoff.ok||!handoffData.jobId)throw new Error(handoffData.error||'Could not start background processing.');
    const savedJobs=readBackgroundJobs();savedJobs.push({jobId:handoffData.jobId,taskId:data.taskId,type,title:name,model,createdAt:new Date().toISOString()});writeBackgroundJobs(savedJobs);
-   status.textContent='Running in the background. You can close this window or continue using Devora AI; completed media is saved to Supabase.';
-   btn.textContent='Running in background…';
-   let finalJob=null;
-   for(let i=0;i<540;i++){
-    await new Promise(r=>setTimeout(r,5000));
-    const check=await fetch('/api/background-media-jobs/'+encodeURIComponent(handoffData.jobId));
-    const state=await check.json();
-    if(!check.ok)throw new Error(state.error||'Could not check background task.');
-    status.textContent=state.state==='saving'?'Generation complete · Saving to Supabase…':'Background generation: '+state.state+(state.progress!==undefined?' · '+state.progress+'%':'');
-    if(state.state==='completed'){finalJob=state;break}
-    if(state.state==='failed')throw new Error(state.error||'Background generation failed.');
-    btn.textContent='Background… '+Math.min(99,Math.round((i+1)/540*100))+'%';
-   }
-   if(!finalJob)throw new Error('Your task is still running in the background. You can safely leave Devora and check your gallery when you return.');
-   saveGenerated({type,title:name,model,taskId:data.taskId,url:finalJob.url,storagePath:finalJob.storagePath,createdAt:new Date().toISOString()});
-   writeBackgroundJobs(readBackgroundJobs().filter(x=>x.jobId!==handoffData.jobId));
-   status.innerHTML='Completed and saved to Supabase! <button type="button" class="primary" style="width:auto;margin-left:8px;padding:9px 13px" onclick="downloadMediaToPhone(\''+escapeAttr(finalJob.url)+'\',\''+escapeAttr(name)+'\',\''+escapeAttr(type)+'\')">⬇ Download to phone</button>';
-   btn.textContent='Generate another';btn.disabled=false;toast('Your '+type+' is ready and saved!');
+   status.textContent='Queued successfully. Devora AI will continue generating and saving this '+type+' in the background, even if you close this window or leave the page. You can check Library when you return.';
+   btn.textContent='Queued in background ✓';
+   btn.disabled=false;
+   toast(type.charAt(0).toUpperCase()+type.slice(1)+' generation is running in the background.');
+   // The server worker now owns status polling and saving. Release the UI immediately.
+   closeModal();
+   return;
   }catch(e){status.textContent=e.message||'Generation failed.';btn.textContent='Try again';btn.disabled=false;toast('KIE.ai: '+(e.message||'Generation failed'))}
  };
 }
