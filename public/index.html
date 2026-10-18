@@ -37,6 +37,36 @@ button{ -webkit-tap-highlight-color:transparent;touch-action:manipulation}button
 @media(hover:hover){.feature:hover,.gallery-card:hover{border-color:#8deaff54;transform:translateY(-2px)}.icon-btn:hover,.edit:hover,.switch:hover{border-color:#8deaff55}}
 @media(max-width:380px){.page{padding:0 12px}.feature{min-height:148px;border-radius:22px}.welcome-panel h1{letter-spacing:-1.7px}.feature-caption{left:13px}.bottom-nav{padding-left:7px;padding-right:7px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+/* Reference-matched neon artwork home — preserve functional studios and Supabase */
+body{background:#030716;color:#f5f8ff;background-image:radial-gradient(ellipse at 8% 35%,#0a2450 0,transparent 42%),radial-gradient(ellipse at 85% 60%,#281044 0,transparent 43%),#030716}
+.app{max-width:860px;padding-bottom:calc(100px + env(safe-area-inset-bottom))}
+.topbar{display:none!important}.page{padding:0 16px}
+.reference-home{padding-top:10px}
+.reference-brand{display:flex;align-items:center;gap:12px;padding:10px 2px 18px}
+.reference-logo{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;font-size:34px;color:#78efff;background:linear-gradient(145deg,#092c63,#091127);border:1px solid #128eff;box-shadow:0 0 18px #087dff55;text-shadow:0 0 12px #20dfff}
+.reference-brand-copy strong{display:block;font-size:23px;letter-spacing:-.7px}.reference-brand-copy strong span{color:#00baff}.reference-brand-copy small{display:block;font-size:12px;color:#a9bddb;margin-top:4px}
+.reference-credits{height:43px;display:flex;align-items:center;gap:9px;padding:0 13px;border-radius:28px;border:1px solid #1d70b7;background:#07142b;color:#d8e9ff;font-size:12px}.reference-credits b{font-size:23px;color:#ffd43b}
+.reference-profile{height:46px;width:46px;border-radius:50%;border:1px solid #00bfff;background:radial-gradient(circle at 50% 30%,#2848a5,#071027 70%);color:#66eaff;font-size:23px;box-shadow:0 0 17px #087dff66}
+.reference-hero{width:100%;min-height:245px;text-align:left;border:1px solid #087cff;border-radius:25px;overflow:hidden;position:relative;padding:24px 18px;background:linear-gradient(90deg,#020c26 0%,#03102cdd 47%,#03102c22 100%),url('https://images.unsplash.com/photo-1535223289827-42f1e9919769?auto=format&fit=crop&w=1200&q=85') center/cover;box-shadow:0 0 18px #087cff45,inset 0 0 24px #087cff25}
+.reference-hero-copy{position:relative;z-index:1;max-width:95%}.reference-hero-copy small{letter-spacing:1.4px;font-size:11px;color:#d2e8ff}.reference-hero h1{font-size:clamp(28px,6vw,43px);line-height:1.04;letter-spacing:-1.2px;margin:9px 0}.reference-hero h1 span{color:#43c8ff}.reference-hero h1 em{font-style:normal;color:#c66bff}.reference-hero-copy>strong{font-size:17px}.reference-hero-copy p{font-size:11px;color:#c7d8f2;margin-top:17px}
+.reference-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0 34px}
+.reference-card{position:relative;isolation:isolate;overflow:hidden;min-height:245px;padding:20px 15px 15px;text-align:left;border-radius:27px;border:1px solid #188fff;background-color:#07132c;background-size:cover;background-position:center;box-shadow:0 0 15px #087dff35,inset 0 0 18px #07122a88;transition:transform .18s}
+.reference-card:before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,#02091ff5 0%,#06112bdb 46%,#06112b22 100%)}
+.reference-card:active{transform:scale(.985)}.image-card{background-image:url('https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&fit=crop&w=700&q=85');border-color:#00bfff}.video-card{background-image:url('https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=700&q=85');border-color:#b74cff}.music-card{background-image:url('https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=700&q=85');border-color:#c34cff}.chat-card{background-image:url('https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=700&q=85');border-color:#00c5ff}
+.reference-icon,.ref-icon{display:grid;place-items:center;width:45px;height:45px;border-radius:14px;border:1px solid #14cfff;background:#053267bb;color:#8df5ff;font-size:26px;box-shadow:0 0 15px #00aaff50}.video-card .ref-icon,.music-card .ref-icon{border-color:#d34aff;color:#f0b5ff;background:#310750bb}
+.reference-card h2{font-size:clamp(23px,5vw,33px);line-height:1.02;letter-spacing:-.8px;margin:13px 0 9px}.reference-card h2 i{font-style:normal;color:#59d9ff}.video-card h2 i,.music-card h2 i{color:#d78aff}.reference-card p{font-size:12px;line-height:1.4;color:#e1eaff;max-width:155px;margin:0 0 12px}.ref-arrow{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:linear-gradient(130deg,#00bfff,#624bff);font-size:25px;box-shadow:0 0 15px #287dff66}.video-card .ref-arrow,.music-card .ref-arrow{background:linear-gradient(130deg,#e047ff,#6b2cff)}.ref-quality{position:absolute;right:12px;top:14px;border:1px solid #d46aff;border-radius:18px;padding:5px 9px;background:#160c31d9;font-size:12px}
+.reference-section-title{display:flex;align-items:center;margin:0 3px 18px;font-size:24px;gap:8px}.reference-section-title>span{display:block}.reference-section-title small{white-space:nowrap}
+.reference-library{padding:16px 13px 18px;border:1px solid #116dff;border-radius:28px;background:linear-gradient(145deg,#07142edb,#040b1ceF);box-shadow:0 0 18px #064bff20}
+.reference-filters{display:flex;gap:8px;overflow-x:auto;padding-bottom:15px;scrollbar-width:none}.reference-filters .switch{white-space:nowrap;border-radius:24px;padding:10px 15px;border-color:#304c82;background:#091a38;color:#d5e5ff;font-size:12px}.reference-filters .switch.selected{background:linear-gradient(100deg,#00bfff,#6c36ff);border-color:#5eeaff;color:white;box-shadow:0 0 13px #007cff55}
+.reference-library .workspace-note{border-radius:24px;border:1px solid #183f83;background:linear-gradient(140deg,#07142e,#050c21);padding:23px 14px;text-align:center}.reference-library .empty-symbol{font-size:38px;color:#19bfff;text-shadow:0 0 18px #00aaff}.reference-library .workspace-note h3{font-size:17px}.reference-library .workspace-note p{font-size:12px}.reference-library .primary{max-width:245px;border-radius:26px;background:linear-gradient(100deg,#00bfff,#6540ff,#c02dff);box-shadow:0 0 18px #5040ff55}
+#homeGallery:empty{display:none}.reference-library #homeGallery{margin-top:10px}
+.bottom-nav{width:min(860px,100%);padding:10px 12px calc(10px + env(safe-area-inset-bottom));grid-template-columns:repeat(5,minmax(0,1fr));background:#03091bf2;border:1px solid #163a79;border-bottom:0;border-radius:26px 26px 0 0;box-shadow:0 -8px 32px #0008;backdrop-filter:blur(24px)}
+.nav-item{font-size:12px;color:#aebfdc;gap:4px}.nav-icon{font-size:25px}.nav-item.active{color:#42dfff}.nav-create{width:65px;height:65px;margin-top:-28px;border:2px solid #72ddff;background:linear-gradient(140deg,#00bfff,#4e53ff 58%,#d83cff);box-shadow:0 0 24px #464cff99;font-size:39px}
+#creditCountMirror{display:none}
+@media(min-width:650px){.reference-hero{min-height:280px;padding:34px}.reference-card{min-height:290px;padding:23px}.reference-card p{font-size:14px}.reference-cards{gap:16px}.reference-hero-copy{max-width:65%}}
+@media(max-width:380px){.page{padding:0 12px}.reference-brand{gap:8px}.reference-brand-copy strong{font-size:19px}.reference-credits{padding:0 9px}.reference-hero{min-height:220px;padding:19px 14px}.reference-cards{gap:9px}.reference-card{min-height:225px;padding:14px 11px;border-radius:22px}.reference-card h2{font-size:23px}.reference-card p{font-size:11px}.ref-arrow{width:36px;height:36px}.reference-filters{gap:6px}.reference-filters .switch{padding:9px 11px}}
+
 </style>
 </head>
 <body>
@@ -47,19 +77,30 @@ button{ -webkit-tap-highlight-color:transparent;touch-action:manipulation}button
 </header>
 <main class="page">
 <section id="createView" class="view active">
-  <div class="welcome-panel">
-    <div class="eyebrow">YOUR AI CREATIVE WORKSPACE</div>
-    <h1>Create something<br><span>extraordinary.</span></h1>
-    <p>Turn your ideas into images, videos and music with Devora AI.</p>
-    <div class="hero-grid">
-      <button class="feature" data-studio="Create Image"><span class="feature-text">Create<br>Image</span><span class="feature-icon">🖼️</span><span class="feature-caption">Text to image · Multiple styles</span></button>
-      <button class="feature" data-studio="Text to Video"><span class="feature-text">Create<br>Video</span><span class="feature-icon">🎞️</span><span class="feature-caption">720p default · Adjustable</span></button>
-      <button class="feature" data-studio="Music Generation"><span class="feature-text">Create<br>Music</span><span class="feature-icon">🎧</span><span class="feature-caption">Songs · Vocals · Instrumentals</span></button>
-      <button class="feature" data-studio="AI Chat"><span class="feature-text">Chat with<br>Devora</span><span class="feature-icon">✦</span><span class="feature-caption">Plan ideas and prompts</span></button>
+  <div class="reference-home">
+    <header class="reference-brand">
+      <div class="reference-logo">▶</div>
+      <div class="reference-brand-copy"><strong>DEVORA <span>AI</span></strong><small>Create · Imagine · Realize</small></div>
+      <div class="spacer"></div>
+      <div class="reference-credits"><b>ϟ</b><span id="creditCountMirror">Credits</span></div>
+      <button class="reference-profile" data-view="meView" aria-label="Open profile">●</button>
+    </header>
+    <button class="reference-hero" data-studio="AI Chat">
+      <div class="reference-hero-copy"><small>TURN YOUR IDEAS INTO</small><h1>Stunning <span>Images,</span><br><em>Videos &amp; Music</em></h1><strong>with Devora AI</strong><p>Powered by KIE.ai&nbsp; · &nbsp;Fast&nbsp; · &nbsp;High Quality</p></div>
+    </button>
+    <div class="reference-cards">
+      <button class="reference-card image-card" data-studio="Create Image"><span class="ref-icon">▧</span><h2>Create<br><i>Image</i></h2><p>Turn your text into amazing images with KIE.ai</p><span class="ref-arrow">→</span></button>
+      <button class="reference-card video-card" data-studio="Text to Video"><span class="ref-quality">720p</span><span class="ref-icon">▣</span><h2>Create<br><i>Video</i></h2><p>Bring your ideas to life with stunning videos using KIE.ai</p><span class="ref-arrow">→</span></button>
+      <button class="reference-card music-card" data-studio="Music Generation"><span class="ref-icon">♫</span><h2>Create<br><i>Music</i></h2><p>Generate high-quality music with KIE.ai</p><span class="ref-arrow">→</span></button>
+      <button class="reference-card chat-card" data-studio="AI Chat"><span class="ref-icon">•••</span><h2>Chat with<br><i>Devora</i></h2><p>Get help, ask questions, be more productive</p><span class="ref-arrow">→</span></button>
     </div>
   </div>
-  <div class="section-label">Your creations <small id="creationCount">0 files</small></div>
-  <div class="workspace-note" id="emptyWorkspace"><div class="empty-symbol">✧</div><h3>Your creative space starts here</h3><p>Generate an image, video or song. Completed files will appear in your library.</p><button class="primary" data-studio="Create Image">Create your first image</button></div>
+  <div class="section-label reference-section-title"><span>✧ &nbsp;Your creations</span><small id="creationCount">0 files　›</small></div>
+  <div class="reference-library">
+    <div class="reference-filters"><button class="switch selected" data-filter="All">▧ &nbsp;All</button><button class="switch" data-filter="Image">▧ &nbsp;Images</button><button class="switch" data-filter="Video">▣ &nbsp;Videos</button><button class="switch" data-filter="Music">♫ &nbsp;Music</button></div>
+    <div class="workspace-note" id="emptyWorkspace"><div class="empty-symbol">▱</div><h3>No creations yet</h3><p>Start creating amazing content with Devora AI</p><button class="primary" data-studio="Create Image">Create Now&nbsp; →</button></div>
+    <div class="gallery" id="homeGallery"></div>
+  </div>
 </section>
 <section id="meView" class="view">
   <div class="profile-head">
