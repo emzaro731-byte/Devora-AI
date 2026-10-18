@@ -275,10 +275,50 @@ function openStudio(name){
   stopBtn.onclick=()=>{if(recorder&&recorder.state!=='inactive')recorder.stop()};
   upload.onchange=()=>{const f=upload.files&&upload.files[0];if(f){if(f.size>15*1024*1024){voiceStatus.textContent='Audio must be 15 MB or smaller.';upload.value='';return}useVoice(f,f.name)}};
  }
- $('#generateBtn').onclick=async()=>{
+ const DEVORA_ESTIMATED_COSTS={
+ 'gpt-image-2-text-to-image':6,'nano-banana-2-1':12,'nano-banana-2':8,'nano-banana-pro':24,
+ 'grok-imagine-image-2-0/text-to-image':10,'grok-imagine/text-to-image':8,'bytedance/seedream-v4-text-to-image':8,
+ 'flux-2/pro-text-to-image':10,'flux-2/flex-text-to-image':10,'qwen2-1/text-to-image':6,
+ 'bytedance/seedance-2-5':170,'veo-3-1':255,'kling-3.0/video':70,'grok-imagine-video-1-5-preview':20,
+ 'V6':12,'V6_MINI':10,'V6_WILD':12
+};
+async function readKieBalance(){
+ const {data,error}=await supabaseClient.functions.invoke('devora-media',{body:{action:'credits'}});
+ if(error)throw new Error(await functionError(error));
+ const n=Number(data?.balance);
+ if(!data?.success||!Number.isFinite(n))throw new Error(data?.error||'Could not verify your live KIE.ai balance. Please try again.');
+ return n;
+}
+function estimateGenerationCredits(model,type){
+ if(type==='video'&&model==='bytedance/seedance-2-5'){
+  const rates={'480p':28,'720p':63,'1080p':158};
+  return Math.ceil((rates[$('#resolution')?.value]||63)*Math.max(5,Math.min(15,Number($('#duration')?.value)||10)));
+ }
+ return DEVORA_ESTIMATED_COSTS[model]||null;
+}
+function ensureCreditEstimateUI(){
+ if($('#generationCreditEstimate'))return;
+ const box=document.createElement('div');box.id='generationCreditEstimate';
+ box.style.cssText='margin:12px 0;padding:12px 14px;border:1px solid rgba(125,170,255,.35);border-radius:14px;background:rgba(15,30,55,.72);line-height:1.6';
+ const btn=$('#generateBtn');btn.parentElement.insertBefore(box,btn);
+}
+function showCreditEstimate(required,balance,exact=false){
+ ensureCreditEstimateUI();const box=$('#generationCreditEstimate');
+ if(required===null){box.innerHTML='Estimated required credits: <b>not available for this model</b><br>Live KIE.ai balance: <b>'+balance.toLocaleString('en-NG')+' credits</b><br><span style="opacity:.8">The provider determines the final charge. Balance will be checked before generation.</span>';return}
+ const enough=balance>=required;
+ box.innerHTML='Estimated credits needed: <b>'+required.toLocaleString('en-NG')+' credits</b><br>Live KIE.ai balance: <b>'+balance.toLocaleString('en-NG')+' credits</b><br><span style="color:'+(enough?'#8ff0bc':'#ff9ca8')+'">'+(enough?'Balance appears sufficient.':'Not enough credits — top up KIE.ai before generating.')+'</span><br><small style="opacity:.75">'+(exact?'Provider-confirmed usage.':'Estimate only; final usage may vary by model and settings.')+'</small>';
+}
+$('#generateBtn').onclick=async()=>{
   const prompt=$('#promptInput')?.value.trim();if(!prompt){toast('Describe your idea first.');return}
   const btn=$('#generateBtn'),status=$('#generationStatus'),model=$('#modelSelect').value,requestId=crypto.randomUUID();
-  btn.disabled=true;btn.textContent='Starting generation…';status.textContent='Connecting securely to KIE.ai…';
+  btn.disabled=true;btn.textContent='Checking credits…';status.textContent='Checking your live KIE.ai balance…';
+  try{
+   const balance=await readKieBalance();
+   const required=estimateGenerationCredits(model,type);
+   showCreditEstimate(required,balance);
+   if(required!==null&&balance<required){status.textContent='Insufficient KIE.ai credits. Top up your account, then try again.';btn.textContent='Insufficient credits';btn.disabled=false;return;}
+  }catch(creditError){status.textContent=creditError.message;btn.textContent='Retry credit check';btn.disabled=false;return}
+  btn.textContent='Starting generation…';status.textContent='Credits checked. Connecting securely to KIE.ai…';
   try{
    if(isVideo&&Number($('#duration').value)>15){
     const total=Number($('#duration').value),sceneDuration=15,count=Math.ceil(total/sceneDuration),segments=[];
