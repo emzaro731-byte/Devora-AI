@@ -109,26 +109,24 @@ class _MediaPageState extends State<MediaPage>{
    final enhanced=(st!='Auto'&&st!='auto'?'Visual style: '+st+'. ':'')+(ar!='auto'?'Aspect ratio: '+ar+'. ':'')+p;
    final req=DateTime.now().microsecondsSinceEpoch.toString();
    final task=await call({'type':type,'model':model,'requestId':req,'prompt':enhanced,'style':st,'aspectRatio':ar,'aspect_ratio':ar,'files':[],'attachments':[]});
+   final taskId=task['taskId']?.toString()??'';if(taskId.isEmpty)throw Exception('KIE.ai did not return a task ID.');
+   final handoff=await http.post(Uri.parse(mediaBackend+'/api/background-media-jobs'),headers:{'Content-Type':'application/json','Authorization':'Bearer '+widget.token},body:jsonEncode({'taskId':taskId,'requestId':req,'type':type,'prompt':enhanced,'model':model})).timeout(const Duration(seconds:30));
+   final hd=jsonDecode(handoff.body) as Map<String,dynamic>;if(handoff.statusCode<200||handoff.statusCode>=300)throw Exception(hd['error']??'Could not start background generation.');
+   final jobId=hd['jobId']?.toString()??'';if(jobId.isEmpty)throw Exception('Background job ID was not returned.');
    Map<String,dynamic>? done;
-   for(var i=0;i<90;i++){
-    await Future.delayed(const Duration(seconds:3));
-    final chk=await call({'action':'status','taskId':task['taskId'],'requestId':req});
-    if(chk['state']=='success'){done=chk;break;}
-    if(chk['state']=='fail'||chk['state']=='failed')throw Exception(chk['failMsg']??'Generation failed.');
-    if(mounted)setState(()=>status='Generating '+type+'… '+(chk['progress']?.toString()??'')+'%');
+   for(var i=0;i<540;i++){
+    await Future.delayed(const Duration(seconds:5));
+    final check=await http.get(Uri.parse(mediaBackend+'/api/background-media-jobs/'+Uri.encodeComponent(jobId))).timeout(const Duration(seconds:20));
+    final chk=jsonDecode(check.body) as Map<String,dynamic>;
+    if(check.statusCode<200||check.statusCode>=300)throw Exception(chk['error']??'Could not check background task.');
+    if(chk['state']=='completed'){done=chk;break;}
+    if(chk['state']=='failed')throw Exception(chk['error']??'Background generation failed.');
+    if(mounted)setState(()=>status=(chk['state']=='saving'?'Generation complete · Saving to Supabase…':'Running in background · '+(chk['progress']?.toString()??'0')+'%'));
    }
-   if(done==null)throw Exception('Generation is still running. Task ID: '+(task['taskId']?.toString()??'unknown'));
-   final url=done['url']?.toString();if(url==null||url.isEmpty)throw Exception('No media URL returned.');
-   setState(()=>status='Copying media to your private Supabase storage…');
-   final kind=type=='image'?'generated_image':type=='video'?'generated_video':'generated_music';
+   if(done==null)throw Exception('Your task is still running in the background. You can leave the app and check again later.');
+   final display=done['url']?.toString();if(display==null||display.isEmpty)throw Exception('Media finished but no saved URL was returned.');
+   final path=done['storagePath']?.toString();
    final name='devora-'+type+'-'+DateTime.now().millisecondsSinceEpoch.toString()+(type=='image'?'.png':type=='video'?'.mp4':'.mp3');
-   final saved=await http.post(Uri.parse(mediaBackend+'/api/storage/import'),headers:{'Content-Type':'application/json','Authorization':'Bearer '+widget.token},body:jsonEncode({'url':url,'name':name,'assetType':kind,'metadata':{'prompt':enhanced,'model':model,'style':st,'aspect_ratio':ar,'request_id':req,'source':'native_flutter'}})).timeout(const Duration(seconds:150));
-   final sd=jsonDecode(saved.body) as Map<String,dynamic>;if(saved.statusCode<200||saved.statusCode>=300)throw Exception(sd['error']??'Supabase storage failed.');
-   final path=sd['path']?.toString();String display=url;
-   if(path!=null){
-    final signed=await http.post(Uri.parse(mediaSupabaseUrl+'/storage/v1/object/sign/devora-assets/'+path.split('/').map(Uri.encodeComponent).join('/')),headers:{'apikey':mediaSupabaseKey,'Authorization':'Bearer '+widget.token,'Content-Type':'application/json'},body:jsonEncode({'expiresIn':604800}));
-    if(signed.statusCode>=200&&signed.statusCode<300){final sj=jsonDecode(signed.body);final sp=(sj['signedURL']??sj['signedUrl'])?.toString();if(sp!=null)display=sp.startsWith('http')?sp:mediaSupabaseUrl+'/storage/v1'+sp;}
-   }
    final user=await http.get(Uri.parse(mediaSupabaseUrl+'/auth/v1/user'),headers:{'apikey':mediaSupabaseKey,'Authorization':'Bearer '+widget.token});
    if(user.statusCode!=200)throw Exception('Media saved, but account verification for chat history failed.');
    final uid=(jsonDecode(user.body) as Map)['id'];
