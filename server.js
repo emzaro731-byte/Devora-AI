@@ -149,5 +149,101 @@ app.post('/api/movie/assemble',async(req,res)=>{
 });
 app.get('/api/movie/assemble/:id',(req,res)=>{const job=movieJobs.get(req.params.id);if(!job)return res.status(404).json({error:'Movie job not found; the server may have restarted.',state:'failed'});res.json({state:job.state,progress:job.progress,url:job.url,error:job.error})});
 
+
+// Background KIE.ai jobs: the browser hands off the provider task, then Render
+// keeps checking it even if the user closes the modal or navigates elsewhere.
+const backgroundMediaJobs = new Map();
+async function mediaEdgeCall(body, authorization) {
+  const response = await fetch(SUPABASE_PROJECT_URL + '/functions/v1/devora-media', {
+    method: 'POST',
+    headers: { apikey: SUPABASE_PUBLIC_KEY, Authorization: authorization, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(30000)
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.error) throw new Error(data.error || 'Supabase media status check failed.');
+  return data;
+}
+async function backgroundMediaWorker(job) {
+  try {
+    job.state = 'processing';
+    const deadline = Date.now() + 45 * 60 * 1000;
+    while (Date.now() < deadline) {
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      const result = await mediaEdgeCall({ action: 'status', taskId: job.taskId, requestId: job.requestId }, job.authorization);
+      const state = String(result.state || 'processing').toLowerCase();
+      job.progress = result.progress ?? job.progress ?? 0;
+      job.providerState = state;
+      if (result.balance !== undefined) job.balance = result.balance;
+      if (state === 'fail' || state === 'failed') throw new Error(result.failMsg || 'KIE.ai generation failed.');
+      if (state !== 'success') continue;
+      const sourceUrl = result.url || result.resultUrl || result.data?.url;
+      if (!sourceUrl) throw new Error('KIE.ai completed but returned no media URL.');
+      job.state = 'saving';
+      const ext = job.type === 'image' ? 'png' : job.type === 'video' ? 'mp4' : 'mp3';
+      const name = 'devora-' + job.type + '-' + job.id + '.' + ext;
+      const savedResponse = await fetch(SUPABASE_PROJECT_URL + '/functions/v1/devora-storage-import', {
+        method: 'POST',
+        headers: { apikey: SUPABASE_PUBLIC_KEY, Authorization: job.authorization, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: sourceUrl, name, assetType: 'generated_' + job.type, metadata: { prompt: job.prompt || '', model: job.model || '', request_id: job.requestId, task_id: job.taskId, source: 'background_worker' } }),
+        signal: AbortSignal.timeout(130000)
+      });
+      const saved = await savedResponse.json().catch(() => ({}));
+      if (!savedResponse.ok || saved.error) throw new Error(saved.error || 'Generation completed, but saving to Supabase failed.');
+      job.storagePath = saved.path || null;
+      job.url = sourceUrl;
+      if (job.storagePath) {
+        const objectPath = job.storagePath.split('/').map(encodeURIComponent).join('/');
+        const signResponse = await fetch(SUPABASE_PROJECT_URL + '/storage/v1/object/sign/devora-assets/' + objectPath, {
+          method: 'POST',
+          headers: { apikey: SUPABASE_PUBLIC_KEY, Authorization: job.authorization, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ expiresIn: 604800 }),
+          signal: AbortSignal.timeout(20000)
+        });
+        const signed = await signResponse.json().catch(() => ({}));
+        const signedPath = signed.signedURL || signed.signedUrl;
+        if (signResponse.ok && signedPath) job.url = signedPath.startsWith('http') ? signedPath : SUPABASE_PROJECT_URL + '/storage/v1' + signedPath;
+      }
+      job.state = 'completed';
+      job.progress = 100;
+      job.finishedAt = Date.now();
+      return;
+    }
+    throw new Error('Generation is taking longer than expected. Reopen Devora and check the provider task again.');
+  } catch (e) {
+    job.state = 'failed';
+    job.error = e.message || 'Background generation failed.';
+    job.finishedAt = Date.now();
+    console.error('Background media job failed:', job.id, job.error);
+  } finally {
+    job.authorization = null;
+  }
+}
+app.post('/api/background-media-jobs', (req, res) => {
+  const authorization = req.headers.authorization || '';
+  if (!/^Bearer\\s+.+$/i.test(authorization)) return res.status(401).json({ error: 'Sign in to Devora AI before starting a background task.' });
+  const taskId = String(req.body?.taskId || '').trim();
+  const requestId = String(req.body?.requestId || '').trim();
+  const type = String(req.body?.type || '').toLowerCase();
+  if (!taskId || !requestId || !['image', 'video', 'music'].includes(type)) return res.status(400).json({ error: 'taskId, requestId, and a valid media type are required.' });
+  const existing = [...backgroundMediaJobs.values()].find(j => j.taskId === taskId && j.requestId === requestId);
+  if (existing) return res.status(202).json({ jobId: existing.id, state: existing.state });
+  const id = crypto.randomUUID();
+  const job = { id, taskId, requestId, type, prompt: String(req.body?.prompt || '').slice(0, 5000), model: String(req.body?.model || '').slice(0, 160), state: 'queued', progress: 0, createdAt: Date.now(), authorization };
+  backgroundMediaJobs.set(id, job);
+  // Keep this in-memory map bounded and avoid retaining completed job details indefinitely.
+  for (const [key, old] of backgroundMediaJobs) {
+    if (backgroundMediaJobs.size <= 200) break;
+    if (old.state === 'completed' || old.state === 'failed') backgroundMediaJobs.delete(key);
+  }
+  res.status(202).json({ jobId: id, state: job.state });
+  setImmediate(() => backgroundMediaWorker(job));
+});
+app.get('/api/background-media-jobs/:id', (req, res) => {
+  const job = backgroundMediaJobs.get(req.params.id);
+  if (!job) return res.status(404).json({ error: 'Background task not found. The service may have restarted.', state: 'not_found' });
+  res.json({ jobId: job.id, state: job.state, progress: job.progress, providerState: job.providerState, url: job.state === 'completed' ? job.url : null, storagePath: job.storagePath, error: job.error, createdAt: job.createdAt, finishedAt: job.finishedAt, balance: job.balance });
+});
+
 const port = process.env.PORT || 3000;
 app.listen(port,'0.0.0.0',()=>console.log('Devora-AI running on '+port));
