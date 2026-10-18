@@ -5,6 +5,52 @@ app.use(express.json({limit:'1mb'}));
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/health', (_req,res)=>res.json({ok:true, app:'Devora-AI'}));
 
+const FLUTTERWAVE_PACKAGES = {5000:1000,10000:2000,15000:3000,20000:4000,25000:5000,30000:6000,35000:7000,40000:8000,45000:9000,50000:10000,55000:11000,60000:12000};
+async function supabaseRest(ctx, pathname, options={}) {
+  const response=await fetch(ctx.base+pathname,{...options,headers:{apikey:ctx.service,Authorization:'Bearer '+ctx.service,'Content-Type':'application/json',...(options.headers||{})}});
+  const text=await response.text();let data=null;try{data=text?JSON.parse(text):null}catch(_){}
+  if(!response.ok)throw new Error((data&& (data.message||data.error||data.hint))||'Supabase request failed.');
+  return data;
+}
+app.post('/api/payments/flutterwave/initialize',async(req,res)=>{
+ try{
+  const ctx=await verifySupabaseUser(req);
+  if(!process.env.FLW_SECRET_KEY)return res.status(503).json({error:'Flutterwave is not configured. Add FLW_SECRET_KEY to Render environment variables.'});
+  const amount=Number(req.body&&req.body.amountNgn),credits=FLUTTERWAVE_PACKAGES[amount];
+  if(!credits)return res.status(400).json({error:'Choose one of the available top-up packages.'});
+  const profile=await supabaseRest(ctx,'/auth/v1/user',{headers:{apikey:process.env.SUPABASE_ANON_KEY||process.env.SUPABASE_PUBLISHABLE_KEY,Authorization:req.headers.authorization}});
+  const reference='devora_'+ctx.user.id.replace(/-/g,'').slice(0,12)+'_'+crypto.randomUUID().replace(/-/g,'');
+  const pending=await supabaseRest(ctx,'/rest/v1/devora_credit_purchases',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({user_id:ctx.user.id,reference,amount_ngn:amount,credits,status:'pending',provider:'flutterwave'})});
+  const email=profile.email||ctx.user.email;
+  if(!email)throw new Error('Your account needs an email address before payment.');
+  const origin=(process.env.PUBLIC_APP_URL||'https://devora-ai-zcmz.onrender.com').replace(/\/$/,'');
+  const fw=await fetch('https://api.flutterwave.com/v3/payments',{method:'POST',headers:{Authorization:'Bearer '+process.env.FLW_SECRET_KEY,'Content-Type':'application/json'},body:JSON.stringify({tx_ref:reference,amount:String(amount),currency:'NGN',redirect_url:origin+'/?payment=flutterwave',customer:{email,name:profile.user_metadata?.full_name||profile.user_metadata?.name||'Devora AI user'},customizations:{title:'Devora AI Credits',description:credits+' generation credits',logo:origin+'/favicon.ico'},meta:{user_id:ctx.user.id,credits}})});
+  const data=await fw.json();
+  if(!fw.ok||data.status!=='success'||!data.data?.link){await supabaseRest(ctx,'/rest/v1/devora_credit_purchases?reference=eq.'+encodeURIComponent(reference),{method:'PATCH',body:JSON.stringify({status:'failed'})}).catch(()=>{});return res.status(502).json({error:data.message||'Flutterwave could not start checkout.'});}
+  res.json({success:true,checkoutUrl:data.data.link,reference,amountNgn:amount,credits});
+ }catch(e){res.status(e.status||500).json({error:e.message||'Could not start payment.'});}
+});
+app.post('/api/payments/flutterwave/verify',async(req,res)=>{
+ try{
+  const ctx=await verifySupabaseUser(req);
+  if(!process.env.FLW_SECRET_KEY)return res.status(503).json({error:'Flutterwave is not configured.'});
+  const transactionId=String(req.body?.transaction_id||'').trim(),reference=String(req.body?.tx_ref||'').trim();
+  if(!/^\d+$/.test(transactionId)||!/^devora_[a-zA-Z0-9_]+$/.test(reference))return res.status(400).json({error:'Invalid payment reference.'});
+  const purchases=await supabaseRest(ctx,'/rest/v1/devora_credit_purchases?select=*&reference=eq.'+encodeURIComponent(reference)+'&user_id=eq.'+encodeURIComponent(ctx.user.id),{});
+  const purchase=Array.isArray(purchases)?purchases[0]:null;
+  if(!purchase)return res.status(404).json({error:'Payment record not found for this account.'});
+  if(purchase.status==='successful')return res.json({success:true,alreadyProcessed:true,creditsAdded:purchase.credits,amountNgn:Number(purchase.amount_ngn)});
+  const response=await fetch('https://api.flutterwave.com/v3/transactions/'+encodeURIComponent(transactionId)+'/verify',{headers:{Authorization:'Bearer '+process.env.FLW_SECRET_KEY,Accept:'application/json'}});
+  const verification=await response.json(),tx=verification.data||{};
+  if(!response.ok||verification.status!=='success'||tx.status!=='successful'||String(tx.tx_ref)!==reference||String(tx.currency).toUpperCase()!=='NGN'||Math.round(Number(tx.amount))!==Math.round(Number(purchase.amount_ngn))){
+   return res.status(402).json({error:'Payment is not verified as successful for the exact amount. If you have paid, wait briefly and retry.'});
+  }
+  const completed=await supabaseRest(ctx,'/rest/v1/rpc/devora_complete_credit_purchase',{method:'POST',body:JSON.stringify({p_reference:reference,p_user_id:ctx.user.id,p_amount_ngn:Number(tx.amount),p_transaction_id:String(tx.id)})});
+  res.json({success:true,creditsAdded:completed?.creditsAdded??purchase.credits,balance:completed?.balance});
+ }catch(e){res.status(e.status||500).json({error:e.message||'Could not verify payment.'});}
+});
+
+
 const dns = require('dns').promises;
 const net = require('net');
 const STORAGE_BUCKET = 'devora-assets';
