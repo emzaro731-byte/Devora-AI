@@ -67,6 +67,50 @@ body{background:#030716;color:#f5f8ff;background-image:radial-gradient(ellipse a
 @media(min-width:650px){.reference-hero{min-height:280px;padding:34px}.reference-card{min-height:290px;padding:23px}.reference-card p{font-size:14px}.reference-cards{gap:16px}.reference-hero-copy{max-width:65%}}
 @media(max-width:380px){.page{padding:0 12px}.reference-brand{gap:8px}.reference-brand-copy strong{font-size:19px}.reference-credits{padding:0 9px}.reference-hero{min-height:220px;padding:19px 14px}.reference-cards{gap:9px}.reference-card{min-height:225px;padding:14px 11px;border-radius:22px}.reference-card h2{font-size:23px}.reference-card p{font-size:11px}.ref-arrow{width:36px;height:36px}.reference-filters{gap:6px}.reference-filters .switch{padding:9px 11px}}
 
+
+/* Final presentation pass: richer hierarchy, calmer spacing, polished cards */
+:root{--blue:#24c8ff;--cyan:#71f2ff;--purple:#a35bff}
+body{background-image:radial-gradient(ellipse at 50% -18%,#163f8a66 0,transparent 34rem),radial-gradient(ellipse at 100% 42%,#5a1a8b35 0,transparent 30rem),radial-gradient(ellipse at 0 76%,#063b7040 0,transparent 25rem),#030716}
+.reference-brand{padding:14px 3px 20px;gap:11px}
+.reference-logo{position:relative;isolation:isolate;font-size:29px;background:linear-gradient(140deg,#112c66,#080e24);border:1px solid #1b9eff;box-shadow:0 0 25px #008bff3a,inset 0 0 14px #29d9ff18}
+.reference-logo:after{content:"";position:absolute;inset:-4px;border-radius:19px;border:1px solid #2b91ff36;z-index:-1}
+.reference-brand-copy strong{font-size:22px;font-weight:850;letter-spacing:.5px}
+.reference-brand-copy small{letter-spacing:.25px;color:#9cb4d7}
+.reference-credits{box-shadow:inset 0 1px #ffffff12,0 5px 20px #00112d66;min-width:82px;justify-content:center}
+.reference-profile{display:grid;place-items:center;font-size:0;position:relative;background:radial-gradient(circle at 50% 30%,#153e83,#080f25 70%);box-shadow:0 0 19px #087dff45}
+.reference-profile:before{content:"";width:12px;height:12px;border-radius:50%;background:#50d9ff;position:absolute;top:9px;left:16px}
+.reference-profile:after{content:"";width:22px;height:12px;border-radius:14px 14px 9px 9px;background:#4d9dff;position:absolute;bottom:9px;left:11px}
+.reference-hero{min-height:250px;border-radius:25px;background-position:center,right center;box-shadow:0 10px 34px #001a4566,0 0 0 1px #6acaff18,inset 0 0 35px #008bff20}
+.reference-hero:after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:linear-gradient(110deg,transparent 35%,#0a5aff10 60%,#b63cff16)}
+.reference-hero-copy{max-width:100%}.reference-hero-copy small{font-weight:750;color:#d7eaff}.reference-hero h1{font-weight:850;text-shadow:0 3px 25px #00102d}.reference-hero-copy>strong{display:block;margin-top:7px}.reference-hero-copy p{display:inline-block;padding:7px 10px;border:1px solid #78baff35;background:#06142ab8;border-radius:20px;backdrop-filter:blur(10px);margin-bottom:0}
+.reference-cards{gap:13px;margin-top:16px;margin-bottom:32px}
+.reference-card{min-height:253px;padding:17px 15px;border-radius:24px;box-shadow:0 8px 24px #0003,0 0 16px #087dff1d,inset 0 1px #ffffff20;background-position:center;background-size:cover}
+.reference-card:before{background:linear-gradient(90deg,#02091ff5 0%,#06112bdc 45%,#06112b30 100%),linear-gradient(0deg,#02081ac9,transparent 55%)}
+.reference-card:after{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:linear-gradient(145deg,#ffffff08,transparent 40%);pointer-events:none}
+.reference-card .ref-icon{width:42px;height:42px;box-shadow:0 0 18px #00aaff35,inset 0 1px #ffffff38;font-weight:800}
+.reference-card h2{margin:14px 0 9px;font-weight:850;text-shadow:0 2px 12px #0009}
+.reference-card p{min-height:48px;text-shadow:0 1px 8px #000}
+.ref-arrow{width:39px;height:39px;font-weight:700;box-shadow:0 5px 18px #1d48ff55,inset 0 1px #ffffff4a}
+.reference-section-title{margin-top:8px;margin-bottom:15px;font-size:23px;letter-spacing:-.45px}
+.reference-section-title>span{display:flex;align-items:center;gap:7px}
+.reference-section-title>span:first-letter{color:#4be7ff}
+.reference-section-title small{font-size:12px;color:#9eb4d9;font-weight:550}
+.reference-library{padding:13px;border-radius:25px;border-color:#214c9c;background:linear-gradient(145deg,#081731eF,#050b1beF);box-shadow:0 14px 35px #0003,inset 0 1px #ffffff10}
+.reference-filters{padding-bottom:13px;gap:7px}
+.reference-filters .switch{padding:10px 13px;display:flex;align-items:center;gap:4px}
+.reference-library .workspace-note{min-height:205px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:25px 14px;background:radial-gradient(ellipse at 50% 10%,#1237774d,transparent 60%),linear-gradient(145deg,#07142e,#050b1d);box-shadow:inset 0 1px #ffffff0a}
+.reference-library .empty-symbol{width:60px;height:60px;display:grid;place-items:center;border-radius:20px;border:1px solid #1688ff44;background:#08234a;color:#49dfff;font-size:34px;margin-bottom:4px}
+.reference-library .workspace-note h3{margin-top:10px;font-weight:750}
+.reference-library .workspace-note p{max-width:260px;margin:0 auto 14px}
+.reference-library .primary{min-height:45px;font-weight:750;letter-spacing:.1px}
+.bottom-nav{border-radius:27px 27px 0 0;background:linear-gradient(180deg,#07142af5,#030817fc);border-color:#1b4b91;box-shadow:0 -10px 38px #0009,inset 0 1px #ffffff12}
+.nav-item{font-weight:550}.nav-item.active .nav-icon{filter:drop-shadow(0 0 7px #27dfff)}
+.nav-create{border-color:#93edff;box-shadow:0 0 26px #426dff9c,inset 0 1px #ffffff7a}
+button{ -webkit-tap-highlight-color:transparent}
+.reference-card:focus-visible,.reference-hero:focus-visible,.nav-item:focus-visible,.primary:focus-visible{outline:2px solid #71f2ff;outline-offset:3px}
+@media(min-width:650px){.reference-hero{min-height:300px}.reference-card{min-height:300px}.reference-hero-copy{max-width:72%}.reference-card h2{font-size:34px}.reference-card p{max-width:190px}}
+@media(max-width:380px){.reference-hero{min-height:218px}.reference-hero h1{font-size:27px}.reference-card{min-height:225px;padding:13px 10px}.reference-card h2{font-size:22px}.reference-card p{font-size:10.5px;min-height:44px}.reference-brand-copy strong{font-size:18px}.reference-brand-copy small{font-size:10px}.reference-logo{width:45px;height:45px}.reference-profile{width:40px;height:40px}.reference-credits{height:39px;font-size:11px}}
+
 </style>
 </head>
 <body>
