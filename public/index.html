@@ -694,7 +694,7 @@ $('#generateBtn').onclick=async()=>{
    // continue if this modal is closed or the browser tab is backgrounded.
    const handoff=await fetch('/api/background-media-jobs',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({taskId:data.taskId,requestId:data.requestId||requestId,type,prompt:payload.prompt||prompt,model})});
    const handoffData=await handoff.json();if(!handoff.ok||!handoffData.jobId)throw new Error(handoffData.error||'Could not start background processing.');
-   const savedJobs=readBackgroundJobs();savedJobs.push({jobId:handoffData.jobId,taskId:data.taskId,type,title:name,model,createdAt:new Date().toISOString()});writeBackgroundJobs(savedJobs);
+   const savedJobs=readBackgroundJobs();savedJobs.push({jobId:handoffData.jobId,taskId:data.taskId,type,title:name,model,createdAt:new Date().toISOString()});writeBackgroundJobs(savedJobs);renderBackgroundHistory();
    status.textContent='Queued successfully. Devora AI will continue generating and saving this '+type+' in the background, even if you close this window or leave the page. You can check Library when you return.';
    btn.textContent='Queued in background ✓';
    btn.disabled=false;
