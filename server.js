@@ -30,6 +30,31 @@ app.post('/api/payments/flutterwave/initialize',async(req,res)=>{
   res.json({success:true,checkoutUrl:data.data.link,reference,amountNgn:amount,credits});
  }catch(e){res.status(e.status||500).json({error:e.message||'Could not start payment.'});}
 });
+app.post('/api/payments/flutterwave/webhook',async(req,res)=>{
+ try{
+  const expected=process.env.FLW_WEBHOOK_HASH||'';
+  const supplied=String(req.headers['verif-hash']||'');
+  if(!expected||!supplied||supplied.length!==expected.length||!require('crypto').timingSafeEqual(Buffer.from(supplied),Buffer.from(expected)))return res.status(401).send('Invalid webhook signature');
+  if(!process.env.FLW_SECRET_KEY)return res.status(503).send('Flutterwave not configured');
+  const payload=req.body||{},transactionId=String(payload.data?.id||'');
+  if(!transactionId)return res.status(200).json({received:true,ignored:true});
+  const verifyResponse=await fetch('https://api.flutterwave.com/v3/transactions/'+encodeURIComponent(transactionId)+'/verify',{headers:{Authorization:'Bearer '+process.env.FLW_SECRET_KEY,Accept:'application/json'}});
+  const verified=await verifyResponse.json(),tx=verified.data||{};
+  if(!verifyResponse.ok||verified.status!=='success'||tx.status!=='successful')return res.status(200).json({received:true,ignored:true});
+  const base=(process.env.SUPABASE_URL||'').replace(/\/$/,'');
+  const service=process.env.SUPABASE_SERVICE_ROLE_KEY||'';
+  if(!base||!service)return res.status(503).send('Supabase service role not configured');
+  const headers={apikey:service,Authorization:'Bearer '+service,'Content-Type':'application/json'};
+  const lookup=await fetch(base+'/rest/v1/devora_credit_purchases?select=*&reference=eq.'+encodeURIComponent(String(tx.tx_ref||'')),{headers});
+  const rows=await lookup.json(),purchase=Array.isArray(rows)?rows[0]:null;
+  if(!lookup.ok)return res.status(502).send('Could not look up purchase');
+  if(!purchase)return res.status(200).json({received:true,ignored:true});
+  if(String(tx.currency).toUpperCase()!=='NGN'||Math.round(Number(tx.amount))!==Math.round(Number(purchase.amount_ngn)))return res.status(200).json({received:true,ignored:true});
+  const done=await fetch(base+'/rest/v1/rpc/devora_complete_credit_purchase',{method:'POST',headers,body:JSON.stringify({p_reference:purchase.reference,p_user_id:purchase.user_id,p_amount_ngn:Number(tx.amount),p_transaction_id:String(tx.id)})});
+  if(!done.ok){console.error('Flutterwave webhook crediting failed:',(await done.text()).slice(0,300));return res.status(500).send('Credit fulfilment failed');}
+  return res.status(200).json({received:true,credited:true});
+ }catch(e){console.error('Flutterwave webhook error:',e.message);return res.status(500).send('Webhook processing failed');}
+});
 app.post('/api/payments/flutterwave/verify',async(req,res)=>{
  try{
   const ctx=await verifySupabaseUser(req);
