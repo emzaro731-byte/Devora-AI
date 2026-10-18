@@ -1032,8 +1032,14 @@ const DEVORA_KIE_MODELS = {
 };
 
 const DEVORA_CREDIT_COSTS = {'gpt-image-2-text-to-image':6,'nano-banana-2-1':12,'nano-banana-2':8,'nano-banana-pro':24,'grok-imagine-image-2-0/text-to-image':10,'grok-imagine/text-to-image':8,'bytedance/seedream-v4-text-to-image':8,'flux-2/pro-text-to-image':10,'flux-2/flex-text-to-image':10,'qwen2-1/text-to-image':6,'bytedance/seedance-2-5':170,'veo-3-1':255,'kling-3.0/video':70,'grok-imagine-video-1-5-preview':20,'V6':12,'V6_MINI':10,'V6_WILD':12};
+const SEEDANCE_KIE_CREDITS_PER_SECOND = {'480p':28,'720p':63,'1080p':158};
+function estimateModelCredits(model, resolution='720p', seconds=10){
+ if(model==='bytedance/seedance-2-5')return Math.ceil((SEEDANCE_KIE_CREDITS_PER_SECOND[resolution]||63)*Math.max(1,Number(seconds)||10));
+ const base=DEVORA_CREDIT_COSTS[model]||0;
+ return model&&['veo-3-1','kling-3.0/video','grok-imagine-video-1-5-preview'].includes(model)?Math.ceil(base*Math.max(1,(Number(seconds)||10)/10)):base;
+}
 let mediaCreditBalance = null;
-function selectedMediaCreditCost(){const base=DEVORA_CREDIT_COSTS[$('#studioModel')?.value]||0;if(activeMediaMode!=='video')return base;const seconds=Number($('#studioVideoDuration')?.value)||10;return Math.ceil(base*Math.max(1,seconds/10))}
+function selectedMediaCreditCost(){const model=$('#studioModel')?.value||'';const resolution=$('#studioResolution')?.value||'720p';const seconds=Number($('#studioVideoDuration')?.value)||10;return estimateModelCredits(model,resolution,activeMediaMode==='video'?seconds:10)}
 function updateMediaCreditCost(){const cost=selectedMediaCreditCost();const label=$('#mediaCreditCost');const balance=Number(mediaCreditBalance);const insufficient=mediaCreditBalance!==null&&Number.isFinite(balance)&&cost>balance;if(label)label.textContent=cost?(insufficient?'Insufficient credits · Need '+cost+', have '+balance:cost+' credits estimated'):'— credits';if(label)label.style.color=insufficient?'#ff7b86':'';const note=$('#videoDurationNote');if(note&&activeMediaMode==='video'){const seconds=Number($('#studioVideoDuration')?.value)||10;note.textContent=insufficient?'Insufficient credits for this duration. Choose a shorter video or add credits.':seconds<=10?'Short clip selected. Longer durations use more credits.':'Estimated cost scales with duration. Long videos open the movie workflow to generate scenes and assemble one MP4.'}const button=$('#studioGenerate');if(button&&studioOpen&&activeMediaMode==='video')button.disabled=!!insufficient}
 function setMediaCreditBalance(value){if(value===null||value===undefined)return;mediaCreditBalance=Number(value);const label=$('#mediaCreditBalance');if(label)label.textContent=mediaCreditBalance+' credits'}
 function ensureDailyCreditNotice(){
@@ -1099,9 +1105,10 @@ async function generateMedia(){
     for(const file of selectedFiles){if(file.type.startsWith('image/')||file.type.startsWith('audio/')||file.type.startsWith('video/'))uploadedFiles.push(await readFileData(file));else if(/\.(txt|md|csv|json)$/i.test(file.name))uploadedFiles.push({name:file.name,type:file.type||'text/plain',content:(await fileToText(file)).slice(0,30000)});else uploadedFiles.push({name:file.name,type:file.type||'application/octet-stream',size:file.size});}
     const chosenModel=$('#studioModel')?.value||'';
     const resolution=(inStudio&&type!=='music'?($('#studioResolution')?.value||'720p'):'720p');
+     const duration=(inStudio&&type==='video'?Number($('#studioVideoDuration')?.value)||10:10);
     const resolutionPrompt=type==='music'?'':'Output resolution preference: '+resolution+'. ';
     const generationPrompt=(resolutionPrompt+enhancedPrompt).trim();
-    const task=await call({type,model:chosenModel,requestId,prompt:generationPrompt,style:visualStyle,aspectRatio:aspectRatio,aspect_ratio:aspectRatio,resolution,quality:resolution,files:uploadedFiles,attachments:uploadedFiles});
+    const task=await call({type,model:chosenModel,requestId,prompt:generationPrompt,style:visualStyle,aspectRatio:aspectRatio,aspect_ratio:aspectRatio,resolution,quality:resolution,duration,files:uploadedFiles,attachments:uploadedFiles});
     setMediaCreditBalance(task.balance);
     status.textContent='Generation queued. Charged '+task.creditCost+' credits. Waiting for KIE.ai…';
     let finalData=null;
@@ -1130,7 +1137,7 @@ async function generateMedia(){
 
  // Long-form movie creation with storyboard, KIE scene generation and MP4 assembly.
  let movieMode='full',movieBusy=false;
- const movieCosts={'bytedance/seedance-2-5':170,'veo-3-1':255,'kling-3.0/video':70,'grok-imagine-video-1-5-preview':20};
+ const movieCosts={'bytedance/seedance-2-5':estimateModelCredits('bytedance/seedance-2-5',$('#studioResolution')?.value||'720p',10),'veo-3-1':255,'kling-3.0/video':70,'grok-imagine-video-1-5-preview':20};
  function movieRequiredCredits(){const seconds=Math.max(5,Math.min(10800,Number($('#movieDurationCustom').value)||Number($('#movieDuration').value)||5));return movieMode==='full'?Math.ceil(seconds/10)*(movieCosts[$('#movieModel').value]||25):Math.min(1080,Math.max(1,Math.ceil(seconds/30)))*6}
  function updateMovieCreditPanel(){const balance=$('#movieCreditBalance'),cost=$('#movieCreditCost'),required=movieRequiredCredits(),enough=mediaCreditBalance!==null&&Number.isFinite(Number(mediaCreditBalance))&&Number(mediaCreditBalance)>=required;if(balance)balance.textContent=currentUser?(mediaCreditBalance===null?'Loading / unavailable':Number(mediaCreditBalance)+' credits'):'Sign in to view';if(cost){cost.textContent=required+' credits'+(mediaCreditBalance!==null&&!enough?' · INSUFFICIENT CREDITS':'');cost.style.color=mediaCreditBalance!==null&&!enough?'#ff7b86':''}const start=$('#movieStart');if(start)start.dataset.creditInsufficient=mediaCreditBalance!==null&&!enough?'true':'false';}
  function updateMovieEstimate(){const customSeconds=Number($('#movieDurationCustom').value),seconds=Math.max(5,Math.min(10800,customSeconds||Number($('#movieDuration').value)||5)),fullCount=Math.ceil(seconds/10),smartCount=Math.min(1080,Math.max(1,Math.ceil(seconds/30))),credits=movieCosts[$('#movieModel').value]||25,formatDuration=s=>s<60?s+' seconds':s%3600===0?(s/3600)+' hour(s)':s>=3600?Math.floor(s/3600)+'h '+Math.round((s%3600)/60)+'m':Math.floor(s/60)+'m '+(s%60?s%60+'s':'');$('#movieEstimate').textContent='Target '+formatDuration(seconds)+'. Devora will automatically plan '+(movieMode==='full'?fullCount+' video scenes/clips ('+Math.ceil(seconds/10)+' clips at up to 10 seconds each)':'about '+smartCount+' keyframe scenes')+' for this duration. Estimated Devora credits: '+(movieMode==='full'?fullCount*credits:smartCount*6)+' ('+(movieMode==='full'?credits+' per video clip': 'about 6 per keyframe image')+'). Scene count is calculated automatically from duration; longer movies require more credits, processing time, and provider capacity. Devora credits are estimates and separate from KIE.ai provider charges.';updateMovieCreditPanel();}
@@ -1160,7 +1167,7 @@ async function generateMedia(){
    for(let i=0;i<scenes.length;i++){
     const scene=scenes[i],selectedStyle=$('#movieStyle')?.value||'auto',styleInstruction=selectedStyle==='auto'?'Use a coherent, visually polished style appropriate to the film concept.':'Visual style: '+selectedStyle.replace(/-/g,' ')+'. Apply this style consistently to every scene, including color grading, lighting, textures, character design, and composition.',scenePrompt=makeMovieScenePrompt(prompt,scene,i,scenes.length)+' '+styleInstruction,type=movieMode==='full'?'video':'image',model=movieMode==='full'?$('#movieModel').value:'nano-banana-2';
     movieStatus('Generating '+(type==='video'?'video clip ':'keyframe image ')+(i+1)+' of '+scenes.length+'…',5+(i/scenes.length)*85);
-    const requestId=crypto.randomUUID(),task=await callMovieMedia(session,{type,model,requestId,prompt:scenePrompt,aspectRatio:ratio,aspect_ratio:ratio});if(task.balance!==undefined)setMediaCreditBalance(task.balance);
+    const requestId=crypto.randomUUID(),resolution=$('#studioResolution')?.value||'720p',task=await callMovieMedia(session,{type,model,requestId,prompt:scenePrompt,aspectRatio:ratio,aspect_ratio:ratio,resolution,duration:10});if(task.balance!==undefined)setMediaCreditBalance(task.balance);
     const url=await waitMovieTask(session,task,requestId,p=>movieStatus('Scene '+(i+1)+' of '+scenes.length+' rendering… '+(p??'')+'%',5+(i/scenes.length)*85));
     rendered.push({url,mediaType:type,durationSeconds:movieMode==='smart'?(Math.floor(durationSeconds/scenes.length)+(i<durationSeconds%scenes.length?1:0)):Math.max(1,Math.min(10,durationSeconds-i*10))});
     const card=document.createElement('div');card.className='movie-scene';const media=type==='video'?document.createElement('video'):document.createElement('img');media.src=url;if(type==='video'){media.controls=true;media.muted=true}else media.alt='Movie scene '+(i+1);card.append(media);const label=document.createElement('div');label.textContent='Scene '+(i+1)+': '+(scene.title||scene.description||'Film scene');card.append(label);$('#movieScenesOutput').append(card);
@@ -1246,7 +1253,7 @@ musicRecordBtn.addEventListener('click',async()=>{
  }catch(e){musicVoiceHelp.textContent='Microphone permission was denied or unavailable. Allow microphone access and try again.'}
 });
 
-$('#studioModel').addEventListener('change',updateMediaCreditCost);$('#studioVideoDuration').addEventListener('change',updateMediaCreditCost);
+$('#studioModel').addEventListener('change',updateMediaCreditCost);$('#studioVideoDuration').addEventListener('change',updateMediaCreditCost);$('#studioResolution').addEventListener('change',()=>{updateMediaCreditCost();updateMovieEstimate()});
 $('#mediaCreditRefresh').addEventListener('click',refreshMediaCredits);
 function handleStudioGenerate(){if(activeMediaMode==='video'&&(Number($('#studioVideoDuration').value)||10)>10){if(!currentUser){openAuth();return}$('#moviePrompt').value=$('#studioPrompt').value.trim();$('#movieDurationCustom').value=String(Number($('#studioVideoDuration').value));$('#movieDuration').value='5';$('#movieModal').classList.remove('hidden');movieMode='full';document.querySelectorAll('[data-movie-mode]').forEach(x=>x.classList.toggle('active',x.dataset.movieMode==='full'));updateMovieEstimate();return}generateMedia()}
 $('#studioGenerate').addEventListener('click',handleStudioGenerate);
