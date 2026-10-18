@@ -7,11 +7,11 @@ app.get('/api/health', (_req,res)=>res.json({ok:true, app:'Devora-AI'}));
 
 const FLUTTERWAVE_PACKAGES = {5000:1000,10000:2000,15000:3000,20000:4000,25000:5000,30000:6000,35000:7000,40000:8000,45000:9000,50000:10000,55000:11000,60000:12000};
 async function verifySupabaseUserInternal(req) {
-  const base = (process.env.SUPABASE_URL || 'https://vihbsfrwnslnmheowkhy.supabase.co').replace(/\\/$/, '');
+  const base = (process.env.SUPABASE_URL || 'https://vihbsfrwnslnmheowkhy.supabase.co').replace(/\/$/, '');
   const anon = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_HIMGxb-O6fj9O7OzT4ukuQ_jm5W8mWz';
   const service = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
   const authorization = req.headers.authorization || '';
-  if (!/^Bearer\\s+.+$/i.test(authorization)) throw new Error('Sign in to your Devora AI account first.');
+  if (!/^Bearer\s+.+$/i.test(authorization)) throw new Error('Sign in to your Devora AI account first.');
   if (!service) throw new Error('Payment backend is not configured: add SUPABASE_SERVICE_ROLE_KEY to Render for Flutterwave credit purchases. Media storage itself uses the Supabase Edge Function.');
   const response = await fetch(base + '/auth/v1/user', {
     headers: { apikey: anon, Authorization: authorization }
@@ -99,7 +99,7 @@ app.get('/api/storage/health', (_req,res) => {
 app.post('/api/storage/import', async (req,res) => {
   try {
     const authorization = req.headers.authorization || '';
-    if (!/^Bearer\\s+.+$/i.test(authorization)) return res.status(401).json({error:'Sign in again to save this file.'});
+    if (!/^Bearer\s+.+$/i.test(authorization)) return res.status(401).json({error:'Sign in again to save this file.'});
     const response = await fetch(SUPABASE_PROJECT_URL + '/functions/v1/devora-storage-import', {
       method:'POST',
       headers:{apikey:SUPABASE_PUBLIC_KEY, Authorization:authorization, 'Content-Type':'application/json'},
