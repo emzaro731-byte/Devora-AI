@@ -326,6 +326,51 @@ body{background:radial-gradient(ellipse at 12% 8%,rgba(24,115,190,.22),transpare
 .create-choice small{font-size:12px;color:#9daac0;margin-top:4px}
 .create-choice-arrow{font-size:20px;color:#a9b8d2;text-align:center}
 
+
+/* October UI upgrade: adaptive liquid-glass polish */
+.reference-home{isolation:isolate;position:relative}
+.reference-home:before{content:"";position:absolute;z-index:-1;pointer-events:none;inset:0 -18px 20%;background:radial-gradient(ellipse at 18% 18%,#0aaeff13,transparent 38%),radial-gradient(ellipse at 85% 48%,#a044ff12,transparent 38%);filter:blur(18px)}
+.reference-brand{position:relative;gap:10px;min-width:0}
+.reference-brand-copy{min-width:0}
+.reference-brand-copy strong{white-space:nowrap}
+.reference-credits{flex-shrink:0;min-width:65px}
+.reference-hero{display:block;isolation:isolate;transition:transform .22s,border-color .22s,box-shadow .22s;background-color:#06132c}
+.reference-hero:focus-visible,.reference-card:focus-visible{outline:2px solid #79eaff;outline-offset:4px}
+.reference-hero:active{transform:scale(.992)}
+.reference-hero-copy p{max-width:100%;font-size:clamp(10px,2.7vw,12px)}
+.reference-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;min-width:0;transition:transform .22s,border-color .22s,box-shadow .22s,filter .22s}
+.reference-card p{position:relative;z-index:1}
+.reference-card .ref-arrow{margin-top:auto;position:relative;z-index:1}
+.reference-card .ref-quality{z-index:2}
+.reference-card:focus-visible{outline-offset:3px}
+.reference-section-title{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.reference-section-title small{font-variant-numeric:tabular-nums}
+.reference-library{position:relative;overflow:hidden}
+.reference-library:before{content:"";position:absolute;pointer-events:none;left:12%;right:12%;top:-55px;height:100px;background:#168bff16;filter:blur(35px)}
+.reference-filters .switch{transition:background .18s,border-color .18s,transform .18s}
+.reference-filters .switch:active{transform:scale(.96)}
+.gallery-card{transition:transform .2s,border-color .2s,box-shadow .2s}
+.gallery-card:focus-visible{outline:2px solid #71f2ff;outline-offset:3px}
+.bottom-nav{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+.nav-item{position:relative;min-width:0}
+.nav-item:focus-visible{outline:2px solid #71f2ff;outline-offset:2px;border-radius:14px}
+.nav-create{transition:transform .2s,box-shadow .2s}
+.nav-item:active .nav-create{transform:scale(.94)}
+.create-choice-grid{display:grid;gap:11px;margin-top:16px}
+.create-choice{display:flex;align-items:center;gap:13px;width:100%;min-height:86px;padding:14px;border-radius:20px;text-align:left;border:1px solid #ffffff20;background:linear-gradient(130deg,#ffffff0d,#ffffff03 55%),rgba(7,17,35,.8);box-shadow:inset 0 1px #ffffff15;transition:transform .18s,border-color .18s,background .18s}
+.create-choice:active{transform:scale(.99)}
+.create-choice-icon{width:48px;height:48px;flex:0 0 48px;display:grid;place-items:center;border-radius:16px;font-size:25px;color:#8cecff;border:1px solid #37caff55;background:linear-gradient(145deg,#0c3965,#101a3c);box-shadow:0 0 20px #078bff16}
+.create-choice-video .create-choice-icon{color:#d9a0ff;border-color:#b765ff55;background:linear-gradient(145deg,#3b185c,#161735)}
+.create-choice-music .create-choice-icon{color:#ffb3e8;border-color:#ef68c855;background:linear-gradient(145deg,#491943,#1b1536)}
+.create-choice>span:nth-child(2){display:grid;gap:5px;min-width:0}
+.create-choice b{font-size:15px;letter-spacing:-.2px}
+.create-choice small{font-size:12px;color:#a8b8d1;line-height:1.35}
+.create-choice-arrow{margin-left:auto;font-size:20px;color:#80eaff}
+@media(hover:hover){.reference-hero:hover{border-color:#5ddfff;box-shadow:0 12px 40px #001a4566,0 0 24px #087cff45,inset 0 0 35px #008bff20}.reference-card:hover{transform:translateY(-3px);filter:brightness(1.08);box-shadow:0 14px 32px #0005,0 0 20px #087dff35,inset 0 1px #ffffff20}.create-choice:hover{border-color:#68dfff75;background:linear-gradient(130deg,#73dfff12,#ffffff04),rgba(7,17,35,.9)}}
+@media(min-width:700px){.reference-home{padding-top:18px}.reference-brand{padding-bottom:24px}.reference-hero{min-height:300px}.reference-cards{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.reference-card{min-height:275px;padding:17px 13px}.reference-card h2{font-size:26px}.reference-card p{font-size:12px}.reference-library{padding:18px}}
+@media(max-width:420px){.reference-brand{gap:7px}.reference-logo{width:43px;height:43px;font-size:24px;border-radius:14px}.reference-brand-copy strong{font-size:17px;letter-spacing:0}.reference-brand-copy small{font-size:10px}.reference-credits{height:39px;min-width:48px;padding:0 8px;gap:5px}.reference-credits b{font-size:18px}.reference-profile{width:39px;height:39px}.reference-profile:before{left:12px;top:7px}.reference-profile:after{left:8px;bottom:7px}.reference-brand .subscribe{height:39px;padding:0 10px!important}.reference-hero{min-height:218px}.reference-card{min-height:218px}.reference-card p{min-height:56px}}
+@media(prefers-reduced-motion:reduce){.reference-hero,.reference-card,.gallery-card,.nav-create,.create-choice,.reference-filters .switch{transition:none!important}}
+
 </style>
 
 <style id="devora-v2-upgrade">
