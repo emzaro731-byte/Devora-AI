@@ -619,14 +619,22 @@ $('#generateBtn').onclick=async()=>{
    if(isVideo&&Number($('#duration').value)>15){
     const total=Number($('#duration').value),sceneDuration=15,count=Math.ceil(total/sceneDuration),segments=[];
     const sceneBeats=['Opening establishing shot and introduce the main character','The story begins to unfold and a new challenge appears','A discovery or unexpected event raises the stakes','The main character takes action toward the goal','Climax, resolution and a memorable final shot'];
-    for(let i=0;i<count;i++){
-     status.textContent='Generating scene '+(i+1)+' of '+count+'…';btn.textContent='Scene '+(i+1)+' / '+count;
-     const scenePrompt=prompt+'; Movie scene '+(i+1)+' of '+count+'. Story beat: '+sceneBeats[i%sceneBeats.length]+'. Maintain the same characters, clothing, setting, color grade and cinematic style as the other scenes. This is one continuous shot, no captions or watermarks.'+($('#visualStyle')&&$('#visualStyle').value!=='Auto'?'; Visual style: '+$('#visualStyle').value:'');
-     const p={type:'video',model,prompt:scenePrompt,requestId:crypto.randomUUID(),aspectRatio:$('#ratio')?.value||'16:9',resolution:$('#resolution')?.value||'720p',duration:sceneDuration};
-     const {data,error}=await supabaseClient.functions.invoke('devora-media',{body:p});if(error)throw new Error(await functionError(error));if(!data?.success)throw new Error(data?.error||'Could not start scene '+(i+1));
-     const result=await pollGeneration(data.taskId,data.requestId||p.requestId,status,btn);if(!result.url)throw new Error('Scene '+(i+1)+' completed without a video URL.');
-     segments.push({url:result.url,mediaType:'video',durationSeconds:sceneDuration});
+    // Generate up to three scenes concurrently instead of waiting for each scene
+    // to finish before starting the next one. Keep output order deterministic.
+    let nextScene=0,finishedScenes=0;
+    async function sceneWorker(){
+     while(true){
+      const i=nextScene++;if(i>=count)return;
+      status.textContent='Starting parallel movie scenes… '+finishedScenes+'/'+count+' complete';
+      const scenePrompt=prompt+'; Movie scene '+(i+1)+' of '+count+'. Story beat: '+sceneBeats[i%sceneBeats.length]+'. Maintain the same characters, clothing, setting, color grade and cinematic style as the other scenes. This is one continuous shot, no captions or watermarks.'+($('#visualStyle')&&$('#visualStyle').value!=='Auto'?'; Visual style: '+$('#visualStyle').value:'');
+      const p={type:'video',model,prompt:scenePrompt,requestId:crypto.randomUUID(),aspectRatio:$('#ratio')?.value||'16:9',resolution:$('#resolution')?.value||'720p',duration:sceneDuration};
+      const {data,error}=await supabaseClient.functions.invoke('devora-media',{body:p});if(error)throw new Error(await functionError(error));if(!data?.success)throw new Error(data?.error||'Could not start scene '+(i+1));
+      const result=await pollGeneration(data.taskId,data.requestId||p.requestId,status,btn);if(!result.url)throw new Error('Scene '+(i+1)+' completed without a video URL.');
+      segments[i]={url:result.url,mediaType:'video',durationSeconds:sceneDuration};
+      finishedScenes++;status.textContent='Parallel movie generation · '+finishedScenes+'/'+count+' scenes complete';
+     }
     }
+    await Promise.all(Array.from({length:Math.min(3,count)},()=>sceneWorker()));
     status.textContent='All scenes generated. Assembling one MP4…';btn.textContent='Assembling movie…';
     const assembled=await fetch('/api/movie/assemble',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({segments,aspectRatio:$('#ratio')?.value||'16:9'})});
     const job=await assembled.json();if(!assembled.ok||!job.jobId)throw new Error(job.error||'Could not start MP4 assembly.');
