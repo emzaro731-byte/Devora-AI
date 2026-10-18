@@ -191,19 +191,10 @@ async function backgroundMediaWorker(job) {
       const saved = await savedResponse.json().catch(() => ({}));
       if (!savedResponse.ok || saved.error) throw new Error(saved.error || 'Generation completed, but saving to Supabase failed.');
       job.storagePath = saved.path || null;
-      job.url = sourceUrl;
-      if (job.storagePath) {
-        const objectPath = job.storagePath.split('/').map(encodeURIComponent).join('/');
-        const signResponse = await fetch(SUPABASE_PROJECT_URL + '/storage/v1/object/sign/devora-assets/' + objectPath, {
-          method: 'POST',
-          headers: { apikey: SUPABASE_PUBLIC_KEY, Authorization: job.authorization, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ expiresIn: 604800 }),
-          signal: AbortSignal.timeout(20000)
-        });
-        const signed = await signResponse.json().catch(() => ({}));
-        const signedPath = signed.signedURL || signed.signedUrl;
-        if (signResponse.ok && signedPath) job.url = signedPath.startsWith('http') ? signedPath : SUPABASE_PROJECT_URL + '/storage/v1' + signedPath;
-      }
+      // Stable public Supabase Storage URL: does not expire. The bucket is configured as public.
+      job.url = job.storagePath
+        ? SUPABASE_PROJECT_URL + '/storage/v1/object/public/devora-assets/' + job.storagePath.split('/').map(encodeURIComponent).join('/')
+        : sourceUrl;
       job.state = 'completed';
       job.progress = 100;
       job.finishedAt = Date.now();
