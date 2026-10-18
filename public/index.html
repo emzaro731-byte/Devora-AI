@@ -313,6 +313,19 @@ body{background:radial-gradient(ellipse at 12% 8%,rgba(24,115,190,.22),transpare
  .reference-library{padding:10px}
 }
 
+
+/* Quick-create action sheet opened from the central plus button */
+.create-choice-grid{display:grid;gap:11px;margin-top:16px}
+.create-choice{width:100%;display:grid;grid-template-columns:52px minmax(0,1fr) 28px;align-items:center;gap:13px;text-align:left;padding:14px;border-radius:19px;border:1px solid #ffffff1d;background:linear-gradient(130deg,#ffffff0e,#ffffff03),rgba(9,15,27,.55);box-shadow:inset 0 1px 0 #ffffff14;transition:transform .18s,border-color .18s,background .18s}
+.create-choice:active{transform:scale(.985)}
+.create-choice:hover{border-color:#8beaff65;background:linear-gradient(130deg,#77eaff17,#a68aff0d),rgba(9,15,27,.72)}
+.create-choice-icon{width:50px;height:50px;display:grid;place-items:center;border-radius:16px;border:1px solid #ffffff20;background:linear-gradient(145deg,#ffffff19,#ffffff05);font-size:24px;color:#9beaff}
+.create-choice-video .create-choice-icon{color:#c2aaff}.create-choice-music .create-choice-icon{color:#ffb9e8}
+.create-choice b,.create-choice small{display:block}
+.create-choice b{font-size:15px;letter-spacing:-.2px}
+.create-choice small{font-size:12px;color:#9daac0;margin-top:4px}
+.create-choice-arrow{font-size:20px;color:#a9b8d2;text-align:center}
+
 </style>
 
 <style id="devora-v2-upgrade">
@@ -395,7 +408,7 @@ button:active{transform:scale(.975)}
 <nav class="bottom-nav" aria-label="Main navigation">
   <button class="nav-item active" data-view="createView"><span class="nav-icon">⌂</span><span>Create</span></button>
   <button class="nav-item" data-view="meView"><span class="nav-icon">▤</span><span>Library</span></button>
-  <button class="nav-item" data-studio="Create Image"><span class="nav-create">＋</span><span style="font-size:0">Create</span></button>
+  <button class="nav-item" id="createMenuButton" type="button" aria-label="Create new content" aria-haspopup="dialog"><span class="nav-create">＋</span><span style="font-size:0">Create</span></button>
   <button class="nav-item" data-studio="Music Generation"><span class="nav-icon">♫</span><span>Music</span></button>
   <button class="nav-item" data-view="meView"><span class="nav-icon">♟</span><span>Me</span></button>
 </nav>
@@ -572,7 +585,8 @@ $$('[data-studio]').forEach(b=>b.addEventListener('click',()=>openStudio(b.datas
 $$('[data-action]').forEach(b=>b.addEventListener('click',()=>action(b.dataset.action)));
 $$('[data-filter]').forEach(b=>b.addEventListener('click',()=>{currentFilter=b.dataset.filter;$$('[data-filter]').forEach(x=>x.classList.toggle('selected',x===b));renderGallery()}));
 $$('[data-profile-tab]').forEach(b=>b.addEventListener('click',()=>{profileTab=b.dataset.profileTab;$$('[data-profile-tab]').forEach(x=>x.classList.toggle('selected',x===b));if(profileTab==='saved'){$('#gallery').innerHTML='<p class="hint">Your saved creations will appear here.</p>'}else if(profileTab==='projects'){$('#gallery').innerHTML='<p class="hint">Your ongoing projects will appear here.</p>'}else renderGallery()}));
-$('#topUpButton')?.addEventListener('click',openTopUp);$('#topUpButtonHome')?.addEventListener('click',openTopUp);$('#closeModal').onclick=closeModal;$('#modalBackdrop').addEventListener('click',e=>{if(e.target.id==='modalBackdrop'&&!e.currentTarget.classList.contains('auth-first'))closeModal()});$('#modalBody').addEventListener('click',e=>{if(e.target.id==='saveProfile')updateProfile();if(e.target.id==='signOutBtn'){supabaseClient.auth.signOut();session=null;$('#creditCount').textContent='—';closeModal();openAuth('Sign in to Devora AI')};if(e.target.id==='chatFallback')openStudio('Create Image')});
+$('#createMenuButton')?.addEventListener('click',()=>openModal('What would you like to create?','<p class="hint">Choose a creative studio to get started.</p><div class="create-choice-grid"><button type="button" class="create-choice create-choice-image" data-create-choice="Create Image"><span class="create-choice-icon">▧</span><span><b>Create Image</b><small>Generate stunning images</small></span><span class="create-choice-arrow">↗</span></button><button type="button" class="create-choice create-choice-video" data-create-choice="Text to Video"><span class="create-choice-icon">▣</span><span><b>Create Video</b><small>Turn ideas into motion</small></span><span class="create-choice-arrow">↗</span></button><button type="button" class="create-choice create-choice-music" data-create-choice="Music Generation"><span class="create-choice-icon">♫</span><span><b>Create Music</b><small>Make songs and sound</small></span><span class="create-choice-arrow">↗</span></button></div>'));
+$('#topUpButton')?.addEventListener('click',openTopUp);$('#topUpButtonHome')?.addEventListener('click',openTopUp);$('#closeModal').onclick=closeModal;$('#modalBackdrop').addEventListener('click',e=>{if(e.target.id==='modalBackdrop'&&!e.currentTarget.classList.contains('auth-first'))closeModal()});$('#modalBody').addEventListener('click',e=>{const createChoice=e.target.closest('[data-create-choice]');if(createChoice){const studio=createChoice.dataset.createChoice;closeModal();openStudio(studio);return}if(e.target.id==='saveProfile')updateProfile();if(e.target.id==='signOutBtn'){supabaseClient.auth.signOut();session=null;$('#creditCount').textContent='—';closeModal();openAuth('Sign in to Devora AI')};if(e.target.id==='chatFallback')openStudio('Create Image')});
 $('#modalBody').addEventListener('submit',async e=>{if(e.target.id!=='chatForm')return;e.preventDefault();const input=$('#chatInput'),send=$('#chatSend'),transcript=$('#chatTranscript'),message=input.value.trim();if(!message)return;const userNode=document.createElement('div');userNode.className='chat-bubble user-bubble';userNode.textContent=message;transcript.append(userNode);input.value='';send.disabled=true;send.textContent='Thinking…';const wait=document.createElement('div');wait.className='chat-bubble assistant-bubble';wait.textContent='Devora AI is thinking…';transcript.append(wait);try{const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:message}]})});const data=await response.json();if(!response.ok)throw new Error(data.error||'Chat request failed');wait.textContent=data.reply||'No response received.'}catch(err){wait.textContent=err.message||'Could not connect to Devora AI.'}finally{send.disabled=false;send.textContent='Send message';transcript.scrollTop=transcript.scrollHeight}});
 $('#displayName').textContent=userProfile.name;$('#displayHandle').textContent=userProfile.handle;$('#avatar').textContent=userProfile.name[0].toUpperCase();renderGallery();
 (async()=>{try{if(!supabaseClient){openAuth('Supabase connection unavailable','signup');$('#authMessage').textContent='Supabase client did not load. Check your connection and refresh.';return}const {data,error}=await supabaseClient.auth.getSession();if(error)throw error;session=data?.session||null;supabaseClient.auth.onAuthStateChange((_event,newSession)=>{session=newSession;if(session)loadCredits();else $('#creditCount').textContent='—'});if(session)await loadCredits();else openAuth('Create your Devora AI account','signup');await handleFlutterwaveReturn()}catch(err){console.error('Devora session initialization failed:',err);openAuth('Create your Devora AI account','signup');const msg=$('#authMessage');if(msg)msg.textContent='Could not connect to authentication: '+(err.message||'Unknown error')+' — check internet and Supabase Auth settings.'}})();
