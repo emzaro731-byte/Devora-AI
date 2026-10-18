@@ -6,7 +6,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/health', (_req,res)=>res.json({ok:true, app:'Devora-AI'}));
 
 const FLUTTERWAVE_PACKAGES = {5000:1000,10000:2000,15000:3000,20000:4000,25000:5000,30000:6000,35000:7000,40000:8000,45000:9000,50000:10000,55000:11000,60000:12000};
-async function verifySupabaseUser(req) {
+async function verifySupabaseUserInternal(req) {
   const base = (process.env.SUPABASE_URL || 'https://vihbsfrwnslnmheowkhy.supabase.co').replace(/\\/$/, '');
   const anon = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_HIMGxb-O6fj9O7OzT4ukuQ_jm5W8mWz';
   const service = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -28,7 +28,7 @@ async function supabaseRest(ctx, pathname, options={}) {
 }
 app.post('/api/payments/flutterwave/initialize',async(req,res)=>{
  try{
-  const ctx=await verifySupabaseUser(req);
+  const ctx=await verifySupabaseUserInternal(req);
   if(!process.env.FLW_SECRET_KEY)return res.status(503).json({error:'Flutterwave is not configured. Add FLW_SECRET_KEY to Render environment variables.'});
   const amount=Number(req.body&&req.body.amountNgn),credits=FLUTTERWAVE_PACKAGES[amount];
   if(!credits)return res.status(400).json({error:'Choose one of the available top-up packages.'});
@@ -71,7 +71,7 @@ app.post('/api/payments/flutterwave/webhook',async(req,res)=>{
 });
 app.post('/api/payments/flutterwave/verify',async(req,res)=>{
  try{
-  const ctx=await verifySupabaseUser(req);
+  const ctx=await verifySupabaseUserInternal(req);
   if(!process.env.FLW_SECRET_KEY)return res.status(503).json({error:'Flutterwave is not configured.'});
   const transactionId=String(req.body?.transaction_id||'').trim(),reference=String(req.body?.tx_ref||'').trim();
   if(!/^\d+$/.test(transactionId)||!/^devora_[a-zA-Z0-9_]+$/.test(reference))return res.status(400).json({error:'Invalid payment reference.'});
