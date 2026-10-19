@@ -29,7 +29,7 @@ class _AppState extends State<DevoraApp>{
  }
  Future<void> login(String t,String e)async{final p=await SharedPreferences.getInstance();await p.setString('access_token',t);await p.setString('email',e);setState((){token=t;email=e;});}
  Future<void> logout()async{final p=await SharedPreferences.getInstance();await p.remove('access_token');await p.remove('email');setState(()=>token=null);}
- @override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Devora AI',theme:ThemeData(useMaterial3:true,brightness:Brightness.dark,scaffoldBackgroundColor:const Color(0xFF060A14),colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFF558AFF),brightness:Brightness.dark)),home:loading?const Scaffold(body:Center(child:CircularProgressIndicator())):token==null?AuthPage(onLogin:login):MainPage(token:token!,email:email??'',onLogout:logout));
+ @override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Devora AI',theme:ThemeData(useMaterial3:true,brightness:Brightness.dark,scaffoldBackgroundColor:const Color(0xFF060A14),colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFF558AFF),brightness:Brightness.dark)),home:token==null?AuthPage(onLogin:login):MainPage(token:token!,email:email??'',onLogout:logout));
 }
 
 class Api{
