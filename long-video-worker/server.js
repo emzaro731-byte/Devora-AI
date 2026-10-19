@@ -6,8 +6,7 @@ const { spawn } = require('node:child_process');
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const KIE_KEY = process.env.KIE_API_KEY || '';
-const GROQ_KEY = process.env.GROQ_API_KEY || '';
+const PROVIDER_FUNCTION = '/functions/v1/devora-worker-provider';
 const PORT = Number(process.env.PORT || 10000);
 const BUCKET = process.env.OUTPUT_BUCKET || 'devora-long-videos';
 const POLL_MS = Number(process.env.POLL_MS || 5000);
@@ -15,7 +14,7 @@ const MAX_MINUTES = 60;
 let busy = false;
 
 function required() {
-  const missing = [['SUPABASE_URL', SUPABASE_URL], ['SUPABASE_SERVICE_ROLE_KEY', SERVICE_KEY], ['KIE_API_KEY', KIE_KEY], ['GROQ_API_KEY', GROQ_KEY]].filter(x => !x[1]).map(x => x[0]);
+  const missing = [['SUPABASE_URL', SUPABASE_URL], ['SUPABASE_SERVICE_ROLE_KEY', SERVICE_KEY]].filter(x => !x[1]).map(x => x[0]);
   if (missing.length) throw new Error('Missing environment variables: ' + missing.join(', '));
 }
 async function sb(pathname, options = {}) {
@@ -31,29 +30,34 @@ async function patchProject(id, values) {
   values.updated_at = new Date().toISOString();
   await sb('/rest/v1/devora_long_video_projects?id=eq.' + encodeURIComponent(id), { method: 'PATCH', body: JSON.stringify(values), headers: { Prefer: 'return=minimal' } });
 }
+async function provider(action, payload = {}) {
+  const response = await fetch(SUPABASE_URL + PROVIDER_FUNCTION, {
+    method: 'POST',
+    headers: { apikey: SERVICE_KEY, Authorization: 'Bearer ' + SERVICE_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, ...payload }),
+  });
+  const raw = await response.text();
+  let data; try { data = raw ? JSON.parse(raw) : {}; } catch { throw new Error('Supabase provider function returned invalid JSON.'); }
+  if (!response.ok || data.error) throw new Error(String(data.error || ('Provider request failed (' + response.status + ')')).slice(0, 1000));
+  return data;
+}
 async function groqScenes(prompt, total, resolution) {
   const all = [];
   for (let start = 0; start < total; start += 20) {
     const count = Math.min(20, total - start);
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST', headers: { Authorization: 'Bearer ' + GROQ_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
-        temperature: 0.65, max_tokens: Math.min(7000, count * 160),
-        messages: [
-          { role: 'system', content: 'You are a film pre-production planner. Return only a JSON array of exactly the requested number of objects, each with scene (integer), prompt (string), continuity (string). Each prompt must describe one coherent cinematic shot that can be generated as an independent 15-second text-to-video clip. Maintain characters, clothing, locations, lighting and visual style across scenes. No titles, no explanation, no markdown. Avoid dialogue text rendered on screen. Do not include timestamps.' },
-          { role: 'user', content: JSON.stringify({ project_idea: prompt, output_resolution: resolution, first_scene_number: start + 1, number_of_scenes: count, target_scene_length_seconds: 15, continuity_note: all.length ? 'Continue the same story and visual identity from these previous scene summaries: ' + all.slice(-5).map(s => s.prompt).join(' | ') : 'Establish the main characters and visual style in the opening scenes.' }) }
-        ]
-      })
+    const data = await provider('plan-scenes', {
+      prompt, total: count, resolution, firstSceneNumber: start + 1,
+      continuityNote: all.length
+        ? 'Continue the same story and visual identity from these previous scene summaries: ' + all.slice(-5).map(s => s.prompt).join(' | ')
+        : 'Establish the main characters and visual style in the opening scenes.',
     });
-    const raw = await response.text();
-    let data; try { data = JSON.parse(raw); } catch { throw new Error('Scene planner returned invalid JSON.'); }
-    if (!response.ok) throw new Error('Groq scene planning failed: ' + (data.error?.message || raw).slice(0, 400));
-    let content = data.choices?.[0]?.message?.content || '';
-    content = content.replace(/^\s*```(?:json)?/i, '').replace(/```\s*$/, '').trim();
-    let scenes; try { scenes = JSON.parse(content); } catch { throw new Error('Scene planner did not return a valid scene list.'); }
-    if (!Array.isArray(scenes) || scenes.length !== count || scenes.some(s => typeof s.prompt !== 'string' || !s.prompt.trim())) throw new Error('Scene planner returned an incomplete scene list.');
-    all.push(...scenes.map((s, i) => ({ scene: start + i + 1, prompt: s.prompt.trim().slice(0, 4000), continuity: String(s.continuity || '').slice(0, 500), status: 'queued', taskId: null, url: null })));
+    if (!Array.isArray(data.scenes) || data.scenes.length !== count || data.scenes.some(s => typeof s.prompt !== 'string' || !s.prompt.trim())) {
+      throw new Error('Supabase scene planner returned an incomplete scene list.');
+    }
+    all.push(...data.scenes.map((s, i) => ({
+      scene: start + i + 1, prompt: s.prompt.trim().slice(0, 4000),
+      continuity: String(s.continuity || '').slice(0, 500), status: 'queued', taskId: null, url: null,
+    })));
   }
   return all;
 }
@@ -68,17 +72,8 @@ function run(command, args, opts = {}) {
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function kieCreate(prompt, resolution, aspectRatio) {
-  const response = await fetch('https://api.kie.ai/api/v1/jobs/createTask', {
-    method: 'POST', headers: { Authorization: 'Bearer ' + KIE_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'bytedance/seedance-2-5', input: {
-      prompt, reference_image_urls: [], reference_video_urls: [], reference_audio_urls: [],
-      return_last_frame: false, generate_audio: true, resolution,
-      aspect_ratio: aspectRatio === 'auto' ? '16:9' : aspectRatio, duration: 15
-    }})
-  });
-  const raw = await response.text(); let d; try { d = JSON.parse(raw); } catch { throw new Error('KIE returned invalid create-task JSON.'); }
-  if (!response.ok || (typeof d.code === 'number' && ![0, 200].includes(d.code))) throw new Error('KIE could not start clip: ' + (d.msg || raw).slice(0, 400));
-  const taskId = d.data?.taskId || d.data?.task_id;
+  const data = await provider('kie-create', { prompt, resolution, aspectRatio });
+  const taskId = data.taskId;
   if (!taskId) throw new Error('KIE did not return a task ID for a clip.');
   return taskId;
 }
@@ -86,20 +81,13 @@ async function kiePoll(taskId, maxMs = 45 * 60 * 1000) {
   const started = Date.now();
   while (Date.now() - started < maxMs) {
     await sleep(5000);
-    const r = await fetch('https://api.kie.ai/api/v1/jobs/recordInfo?taskId=' + encodeURIComponent(taskId), { headers: { Authorization: 'Bearer ' + KIE_KEY } });
-    const raw = await r.text(); let d; try { d = JSON.parse(raw); } catch { continue; }
-    if (!r.ok || (typeof d.code === 'number' && ![0, 200].includes(d.code))) continue;
-    const task = d.data || {};
-    if (task.state === 'success') {
-      let result = task.resultJson;
-      if (typeof result === 'string') { try { result = JSON.parse(result); } catch { result = {}; } }
-      const urls = [];
-      const walk = v => { if (typeof v === 'string' && /^https?:\/\//i.test(v)) urls.push(v); else if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v === 'object') Object.entries(v).forEach(([k, x]) => { if (/url|video|result|output|file/i.test(k)) walk(x); }); };
-      walk(result);
-      if (urls.length) return { url: urls[0], creditsConsumed: Number(task.creditsConsumed ?? task.credits_consumed ?? 0) || null };
-      throw new Error('KIE completed a clip but returned no downloadable video URL.');
+    const task = await provider('kie-poll', { taskId });
+    if (task.state === 'success' && task.url) {
+      return { url: task.url, creditsConsumed: Number(task.creditsConsumed ?? 0) || null };
     }
-    if (['fail', 'failed', 'error'].includes(String(task.state).toLowerCase())) throw new Error('KIE clip failed: ' + (task.failMsg || task.failReason || 'provider error'));
+    if (['fail', 'failed', 'error'].includes(String(task.state).toLowerCase())) {
+      throw new Error('KIE clip failed: ' + (task.failMsg || 'provider error'));
+    }
   }
   throw new Error('A clip timed out while waiting for KIE. The project is stopped to prevent untracked costs.');
 }
