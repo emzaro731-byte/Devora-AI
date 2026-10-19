@@ -14,7 +14,7 @@ class DevoraApp extends StatefulWidget { const DevoraApp({super.key}); @override
 class _AppState extends State<DevoraApp>{
  String? token,email; bool loading=true;
  @override void initState(){super.initState();restore();}
- Future<void> restore()async{final p=await SharedPreferences.getInstance();setState((){token=p.getString('access_token');email=p.getString('email');loading=false;});}
+ Future<void> restore() async { try { final p = await SharedPreferences.getInstance().timeout(const Duration(seconds: 8)); if (!mounted) return; setState(() { token = p.getString('access_token'); email = p.getString('email'); loading = false; }); } catch (_) { if (!mounted) return; setState(() { token = null; email = null; loading = false; }); }}
  Future<void> login(String t,String e)async{final p=await SharedPreferences.getInstance();await p.setString('access_token',t);await p.setString('email',e);setState((){token=t;email=e;});}
  Future<void> logout()async{final p=await SharedPreferences.getInstance();await p.remove('access_token');await p.remove('email');setState(()=>token=null);}
  @override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Devora AI',theme:ThemeData(useMaterial3:true,brightness:Brightness.dark,scaffoldBackgroundColor:const Color(0xFF060A14),colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFF558AFF),brightness:Brightness.dark)),home:loading?const Scaffold(body:Center(child:CircularProgressIndicator())):token==null?AuthPage(onLogin:login):MainPage(token:token!,email:email??'',onLogout:logout));
