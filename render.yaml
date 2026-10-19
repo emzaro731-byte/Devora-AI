@@ -11,10 +11,6 @@ services:
         value: https://vihbsfrwnslnmheowkhy.supabase.co
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
-      - key: KIE_API_KEY
-        sync: false
-      - key: GROQ_API_KEY
-        sync: false
       - key: OUTPUT_BUCKET
         value: devora-long-videos
       - key: POLL_MS
