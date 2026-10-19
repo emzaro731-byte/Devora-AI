@@ -1,11 +1,16 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:file_saver/file_saver.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
 
 const sbUrl='https://vihbsfrwnslnmheowkhy.supabase.co';
 const sbKey='sb_publishable_HIMGxb-O6fj9O7OzT4ukuQ_jm5W8mWz';
@@ -41,6 +46,27 @@ class Api{
   final d=jsonDecode(r.body);if(r.statusCode<200||r.statusCode>=300)throw Exception(d['msg']??d['message']??d['error_description']??'Authentication failed');
   if(d['access_token']==null)throw Exception('Account created. Confirm your email, then sign in.');
   return Map<String,dynamic>.from(d);
+ }
+ static Future<String> uploadVoiceReference(String t,Uint8List bytes,String filename,String mime)async{
+  if(bytes.isEmpty)throw Exception('The voice recording is empty.');
+  if(bytes.length>25*1024*1024)throw Exception('Please choose an audio file smaller than 25 MB.');
+  final userResponse=await http.get(Uri.parse(sbUrl+'/auth/v1/user'),headers:{'apikey':sbKey,'Authorization':'Bearer '+t}).timeout(const Duration(seconds:30));
+  if(userResponse.statusCode<200||userResponse.statusCode>=300)throw Exception('Your session expired. Sign in again.');
+  final user=jsonDecode(userResponse.body);
+  final userId=(user['id']??'').toString();
+  if(userId.isEmpty)throw Exception('Could not verify your account.');
+  final safeName=DateTime.now().millisecondsSinceEpoch.toString()+'-'+filename.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'),'_');
+  final path=userId+'/'+safeName;
+  final upload=await http.post(Uri.parse(sbUrl+'/storage/v1/object/devora-voice-inputs/'+path),headers:{'apikey':sbKey,'Authorization':'Bearer '+t,'Content-Type':mime,'x-upsert':'false'},body:bytes).timeout(const Duration(seconds:90));
+  if(upload.statusCode<200||upload.statusCode>=300)throw Exception('Could not upload voice audio: '+upload.body);
+  final signed=await http.post(Uri.parse(sbUrl+'/storage/v1/object/sign/devora-voice-inputs/'+path),headers:{'apikey':sbKey,'Authorization':'Bearer '+t,'Content-Type':'application/json'},body:jsonEncode({'expiresIn':3600})).timeout(const Duration(seconds:30));
+  if(signed.statusCode<200||signed.statusCode>=300)throw Exception('Could not create a temporary audio link.');
+  final data=jsonDecode(signed.body);
+  final signedPath=(data['signedURL']??data['signedUrl']??'').toString();
+  if(signedPath.isEmpty)throw Exception('Supabase did not return a signed audio link.');
+  if(signedPath.startsWith('http'))return signedPath;
+  if(signedPath.startsWith('/storage/v1/'))return sbUrl+signedPath;
+  return sbUrl+'/storage/v1'+(signedPath.startsWith('/')?signedPath:'/'+signedPath);
  }
  static Future<Map<String,dynamic>> call(String fn,String t,Map<String,dynamic> body)async{
   final r=await http.post(Uri.parse(sbUrl+'/functions/v1/'+fn),headers:headers(t),body:jsonEncode(body)).timeout(const Duration(seconds:90));
@@ -127,10 +153,12 @@ class _ChatState extends State<ChatPage>{final input=TextEditingController();fin
  @override Widget build(BuildContext c)=>Column(children:[Padding(padding:const EdgeInsets.all(12),child:Row(children:[const Icon(Icons.auto_awesome_rounded,color:Color(0xFF55DCCB),size:18),const SizedBox(width:8),const Text('AI ASSISTANT',style:TextStyle(color:Colors.white70,letterSpacing:1.4,fontWeight:FontWeight.w800,fontSize:11)),const Spacer(),DropdownButton<String>(value:mode,items:['Chat','Code','Study','Write','Creative'].map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(),onChanged:(v)=>setState(()=>mode=v!))])),Expanded(child:ListView.builder(padding:const EdgeInsets.all(14),itemCount:msgs.length+(busy?1:0),itemBuilder:(c,i){if(i>=msgs.length)return const Text('Devora is thinking…',style:TextStyle(color:Colors.white54));final m=msgs[i];final user=m['role']=='user';return Align(alignment:user?Alignment.centerRight:Alignment.centerLeft,child:Container(constraints:const BoxConstraints(maxWidth:340),margin:const EdgeInsets.only(bottom:12),padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:user?const Color(0xFF0A4A4B):const Color(0xFF09191B),borderRadius:BorderRadius.circular(18),border:Border.all(color:Colors.white10)),child:Text(m['content']??'',style:const TextStyle(height:1.45))));})),SafeArea(top:false,child:Padding(padding:const EdgeInsets.all(12),child:Glass(child:Row(children:[Expanded(child:TextField(controller:input,minLines:1,maxLines:4,onSubmitted:(_)=>send(),decoration:const InputDecoration(hintText:'Message Devora AI…',border:InputBorder.none,contentPadding:EdgeInsets.all(12))),),IconButton(onPressed:busy?null:send,icon:const Icon(Icons.arrow_upward),style:IconButton.styleFrom(backgroundColor:const Color(0xFF139E9B)))]))))]);}
 class MediaPage extends StatefulWidget{final String token;final Future<void> Function() refresh;const MediaPage({super.key,required this.token,required this.refresh});@override State<MediaPage> createState()=>_MediaState();}
 class _MediaState extends State<MediaPage>{
- final prompt=TextEditingController();String type='image',model='gpt-image-2-text-to-image',resolution='720p',ratio='auto',status='',result='';int duration=10;bool busy=false,downloading=false;
+ final prompt=TextEditingController(),musicStyle=TextEditingController(text:'Afrobeats, melodic, polished studio production');String type='image',model='gpt-image-2-text-to-image',resolution='720p',ratio='auto',status='',result='',voiceMode='AI voice',voiceFileName='',voiceMime='audio/mp4';Uint8List? voiceBytes;final AudioRecorder recorder=AudioRecorder();int duration=10;String voiceGender='m';bool busy=false,downloading=false,recording=false;
  final models={'image':['gpt-image-2-text-to-image','nano-banana-2-1','nano-banana-2','nano-banana-pro','grok-imagine-image-2-0/text-to-image','bytedance/seedream-v4-text-to-image','flux-2/pro-text-to-image','qwen2-1/text-to-image'],'video':['bytedance/seedance-2-5','veo-3-1','kling-3.0/video','grok-imagine-video-1-5-preview'],'music':['V6','V6_MINI','V6_WILD']};
  int get cost=>type=='image'?({'gpt-image-2-text-to-image':6,'nano-banana-2-1':12,'nano-banana-2':8,'nano-banana-pro':24,'grok-imagine-image-2-0/text-to-image':10,'bytedance/seedream-v4-text-to-image':8,'flux-2/pro-text-to-image':10,'qwen2-1/text-to-image':6}[model]??8):type=='video'?({'bytedance/seedance-2-5':170,'veo-3-1':255,'kling-3.0/video':70,'grok-imagine-video-1-5-preview':20}[model]??70):(model=='V6_MINI'?10:12);
- Future<void> generate()async{if(prompt.text.trim().isEmpty){setState(()=>status='Enter a prompt first.');return;}setState(()=>{busy=true,status='Starting generation…',result=''});try{final d=await Api.call('devora-media',widget.token,{'type':type,'model':model,'prompt':prompt.text.trim(),'requestId':uuid.v4(),'resolution':resolution,'aspectRatio':ratio,'duration':duration});final task=(d['taskId']??'').toString();setState(()=>status='Queued task '+task);if(task.isNotEmpty)await poll(task);}catch(x){setState(()=>status=x.toString().replaceFirst('Exception: ',''));}if(mounted){setState(()=>busy=false);await widget.refresh();}}
+ Future<void> generate()async{if(prompt.text.trim().isEmpty){setState(()=>status='Enter a song idea or lyrics first.');return;}if(type=='music'&&voiceMode!='AI voice'&&voiceBytes==null){setState(()=>status='Record or upload an audio sample first.');return;}setState(()=>{busy=true,status='Starting generation…',result=''});try{String? audioUrl;if(type=='music'&&voiceMode!='AI voice'){status='Uploading your voice reference securely…';audioUrl=await Api.uploadVoiceReference(widget.token,voiceBytes!,voiceFileName.isEmpty?'voice.m4a':voiceFileName,voiceMime);}final body=<String,dynamic>{'type':type,'model':model,'prompt':prompt.text.trim(),'requestId':uuid.v4(),'resolution':resolution,'aspectRatio':ratio,'duration':duration};if(type=='music'){body['voiceMode']=voiceMode;body['style']=musicStyle.text.trim();body['vocalGender']=voiceGender;}if(audioUrl!=null)body['audioUrl']=audioUrl;final d=await Api.call('devora-media',widget.token,body);final task=(d['taskId']??'').toString();setState(()=>status='Queued task '+task);if(task.isNotEmpty)await poll(task);}catch(x){if(mounted)setState(()=>status=x.toString().replaceFirst('Exception: ',''));}if(mounted){setState(()=>busy=false);await widget.refresh();}}
+ Future<void> chooseVoiceFile()async{try{final pick=await FilePicker.platform.pickFiles(type:FileType.audio,withData:true);if(pick==null||pick.files.isEmpty)return;final file=pick.files.first;Uint8List? bytes=file.bytes;if(bytes==null&&file.path!=null)bytes=await File(file.path!).readAsBytes();if(bytes==null||bytes.isEmpty)throw Exception('Could not read the selected audio file.');if(bytes.length>25*1024*1024)throw Exception('Please choose an audio file smaller than 25 MB.');final ext=(file.extension??'m4a').toLowerCase();setState(()=>{voiceBytes=bytes,voiceFileName:file.name,voiceMime=ext=='mp3'?'audio/mpeg':ext=='wav'?'audio/wav':ext=='ogg'?'audio/ogg':ext=='aac'?'audio/aac':'audio/mp4',voiceMode='Upload voice',status='Voice sample selected: '+file.name});}catch(e){if(mounted)setState(()=>status='Could not select audio: '+e.toString().replaceFirst('Exception: ',''));}}
+ Future<void> toggleRecording()async{try{if(recording){final path=await recorder.stop();if(path==null)throw Exception('Recording did not produce an audio file.');final bytes=await File(path).readAsBytes();if(bytes.isEmpty)throw Exception('The recording is empty.');if(bytes.length>25*1024*1024)throw Exception('Recording is over 25 MB. Please record a shorter sample.');setState(()=>{voiceBytes=bytes,voiceFileName='voice-recording.m4a',voiceMime='audio/mp4',recording=false,voiceMode='Record voice',status='Voice recording ready to use.'});}else{if(!await recorder.hasPermission())throw Exception('Microphone permission is required to record your voice.');final dir=await getTemporaryDirectory();final path=dir.path+'/devora-voice-'+DateTime.now().millisecondsSinceEpoch.toString()+'.m4a';await recorder.start(const RecordConfig(encoder:AudioEncoder.aacLc),path:path);setState(()=>{recording=true,voiceMode='Record voice',status='Recording… tap Stop when finished.'});}}catch(e){if(mounted)setState(()=>{recording=false,status='Recording error: '+e.toString().replaceFirst('Exception: ','' )});}}
  Future<void> openResult() async {
    final uri=Uri.tryParse(result);
    if(uri==null||!uri.hasScheme){if(mounted)setState(()=>status='The media link is invalid.');return;}
@@ -184,8 +212,8 @@ class _MediaState extends State<MediaPage>{
          child: Column(
            crossAxisAlignment: CrossAxisAlignment.start,
            children: [
-             const Text('PROMPT', style: TextStyle(color: Colors.white54, letterSpacing: 1.5)),
-             TextField(controller: prompt, minLines: 4, maxLines: 7, decoration: const InputDecoration(hintText: 'Describe your creation…', border: InputBorder.none)),
+             Text(type=='music'?'SONG IDEA OR LYRICS':'PROMPT', style: const TextStyle(color: Colors.white54, letterSpacing: 1.5)),
+             TextField(controller: prompt, minLines: 4, maxLines: 7, decoration: InputDecoration(hintText: type=='music'?'Describe your song or enter lyrics…':'Describe your creation…', border: InputBorder.none)),
              const Divider(color: Colors.white12),
              const Text('MODEL', style: TextStyle(color: Colors.white54, letterSpacing: 1.5)),
              DropdownButtonFormField<String>(
@@ -195,7 +223,27 @@ class _MediaState extends State<MediaPage>{
                items: models[type]!.map((m) => DropdownMenuItem(value: m, child: Text(m, overflow: TextOverflow.ellipsis))).toList(),
                onChanged: busy ? null : (v) => setState(() => model = v!),
              ),
-             if (type != 'music') ...[
+                   if(type=='music') ...[
+               const SizedBox(height:8),
+               const Text('VOICE SOURCE',style:TextStyle(color:Colors.white54,letterSpacing:1.5)),
+               Wrap(spacing:8,runSpacing:8,children:['AI voice','Record voice','Upload voice'].map((v)=>ChoiceChip(label:Text(v),selected:voiceMode==v,onSelected:busy?null:(_){setState(()=>{voiceMode=v;if(v=='AI voice'){voiceBytes=null;voiceFileName='';}status='';});if(v=='Upload voice')chooseVoiceFile();})).toList()),
+               if(voiceMode=='AI voice') ...[
+                 const SizedBox(height:8),
+                 DropdownButtonFormField<String>(value:voiceGender,decoration:const InputDecoration(labelText:'AI singing voice'),items:const [DropdownMenuItem(value:'m',child:Text('Male vocals')),DropdownMenuItem(value:'f',child:Text('Female vocals'))],onChanged:busy?null:(v)=>setState(()=>voiceGender=v??'m')),
+                 const SizedBox(height:8),
+                 const Text('Describe the song or enter lyrics in the prompt above.',style:TextStyle(color:Colors.white54,fontSize:12)),
+               ] else ...[
+                 const SizedBox(height:8),
+                 Row(children:[Expanded(child:Text(voiceBytes==null?'Record a short voice sample or choose an audio file.':voiceFileName,style:const TextStyle(color:Colors.white70,fontSize:12),maxLines:2,overflow:TextOverflow.ellipsis)),const SizedBox(width:8),if(voiceMode=='Record voice')FilledButton.tonalIcon(onPressed:busy?null:toggleRecording,icon:Icon(recording?Icons.stop_circle_outlined:Icons.mic_none_rounded),label:Text(recording?'Stop':'Record'))else OutlinedButton.icon(onPressed:busy?null:chooseVoiceFile,icon:const Icon(Icons.upload_file_rounded),label:const Text('Choose audio'))]),
+                 const SizedBox(height:5),
+                 const Text('Your audio is uploaded privately to Supabase and sent to the music model as a reference. It may influence the result but does not guarantee an exact voice clone.',style:TextStyle(color:Colors.white54,fontSize:11)),
+               ],
+               const SizedBox(height:10),
+               const Text('MUSIC STYLE',style:TextStyle(color:Colors.white54,letterSpacing:1.5)),
+               TextField(controller:musicStyle,minLines:1,maxLines:3,decoration:const InputDecoration(hintText:'Afrobeats, R&B, soulful…',border:InputBorder.none)),
+               const Divider(color:Colors.white12),
+             ],
+       if (type != 'music') ...[
                const Text('RESOLUTION', style: TextStyle(color: Colors.white54, letterSpacing: 1.5)),
                DropdownButtonFormField<String>(
                  value: resolution,
