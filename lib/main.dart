@@ -639,6 +639,18 @@ class _CreditsPageState extends State<CreditsPage> {
  bool busy = false;
  String message = '';
  String? reference;
+ String paymentMode = 'checking';
+ String paymentConfigMessage = 'Checking Flutterwave configuration…';
+ @override void initState(){super.initState();_checkPaymentConfig();}
+ Future<void> _checkPaymentConfig() async {
+  try {
+   final cfg=await Api.call('devora-credit-payments',widget.token,{'action':'config'});
+   if(!mounted)return;
+   setState(() { paymentMode=(cfg['mode']??'unconfigured').toString(); paymentConfigMessage=(cfg['message']??'Flutterwave configuration checked.').toString(); });
+  } catch(e) {
+   if(mounted)setState(()=>{paymentMode='unconfigured',paymentConfigMessage='Could not check Flutterwave configuration: ${e.toString().replaceFirst('Exception: ','')}'});
+  }
+ }
  num? amount;
  num? credits;
  final packages = const [
