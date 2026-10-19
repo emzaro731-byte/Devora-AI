@@ -21,6 +21,8 @@ jobs:
         with:
           channel: stable
           cache: true
+      - name: Generate missing Android platform files
+        run: flutter create --platforms=android --project-name devora_ai .
       - run: flutter pub get
       - name: Build optimized ARM64 release APK
         run: flutter build apk --release --target-platform android-arm64 --split-debug-info=build/symbols --obfuscate
