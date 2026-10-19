@@ -44,9 +44,14 @@ class _LongVideoPageState extends State<LongVideoPage> {
     if (ok != true || !mounted) return;
     setState(() { submitting = true; message = 'Queueing your project…'; });
     try {
+      final userResponse = await http.get(Uri.parse('$_supabaseUrl/auth/v1/user'), headers: headers).timeout(const Duration(seconds: 20));
+      if (userResponse.statusCode < 200 || userResponse.statusCode >= 300) throw Exception('Your session expired. Sign in again.');
+      final userData = jsonDecode(userResponse.body) as Map<String, dynamic>;
+      final userId = (userData['id'] ?? '').toString();
+      if (userId.isEmpty) throw Exception('Could not verify your account.');
       final r = await http.post(Uri.parse('$_supabaseUrl/rest/v1/devora_long_video_projects'),
         headers: {...headers, 'Prefer': 'return=representation'},
-        body: jsonEncode({'prompt': idea, 'model': 'bytedance/seedance-2-5', 'resolution': resolution, 'aspect_ratio': ratio, 'target_duration_seconds': minutes * 60, 'status': 'queued', 'estimated_credits': estimate}),
+        body: jsonEncode({'user_id': userId, 'prompt': idea, 'model': 'bytedance/seedance-2-5', 'resolution': resolution, 'aspect_ratio': ratio, 'target_duration_seconds': minutes * 60, 'status': 'queued', 'estimated_credits': estimate}),
       ).timeout(const Duration(seconds: 30));
       if (r.statusCode < 200 || r.statusCode >= 300) throw Exception('Could not queue project: ${r.body}');
       prompt.clear();
