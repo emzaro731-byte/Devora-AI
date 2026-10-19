@@ -225,7 +225,7 @@ class _MediaState extends State<MediaPage> with WidgetsBindingObserver{
  @override void didChangeAppLifecycleState(AppLifecycleState state){if(state==AppLifecycleState.resumed)resumePendingGenerations();}
  Future<void> resumePendingGenerations()async{
   if(resumingPending)return;resumingPending=true;
-  try{final rows=await Api.loadGenerations(widget.token);for(final row in rows){if((row['status']??'').toString().toLowerCase()!='processing')continue;final task=(row['task_id']??'').toString();final id=(row['id']??'').toString();if(task.isEmpty||id.isEmpty||activePolls.contains(task))continue;unawaited(poll(task,historyId:id,resumed:true));}}
+  try{final rows=await Api.loadGenerations(widget.token);for(final row in rows){if((row['status']??'').toString().toLowerCase()!='processing')continue;final task=(row['task_id']??'').toString();final id=(row['id']??'').toString();if(task.isEmpty||id.isEmpty||activePolls.contains(task))continue;unawaited(poll(task,historyId:id,resumed:true,mediaType:(row['type']??'image').toString()));}}
   catch(_){}
   finally{resumingPending=false;}
  }
@@ -365,7 +365,7 @@ class _MediaState extends State<MediaPage> with WidgetsBindingObserver{
    }
  }
  Future<void> saveHistoryStatus(String status,{String? url,String? historyId})async{final id=historyId??currentHistoryId;if(id==null)return;try{await Api.updateGeneration(widget.token,id,status:status,url:url);}catch(_){}}
-  Future<void> poll(String task,{String? historyId,bool resumed=false})async{
+  Future<void> poll(String task,{String? historyId,bool resumed=false,String? mediaType})async{
    if(!activePolls.add(task))return;
    try{
     // Provider jobs keep running remotely. Persisted task IDs are resumed on launch/app return.
@@ -379,7 +379,7 @@ class _MediaState extends State<MediaPage> with WidgetsBindingObserver{
       if(u.isEmpty&&urls is List&&urls.isNotEmpty)u=urls.first.toString();
       if(u.startsWith('http')){
        await saveHistoryStatus('completed',url:u,historyId:historyId);
-       if(mounted&&(!resumed||currentHistoryId==historyId)){setState(()=>{result=u,status='Generation complete. Your file is ready to preview or download from History.'});currentHistoryId=historyId;await prepareMediaPreview(u);}
+       if(mounted){if(mediaType!=null)type=mediaType;setState(()=>{result=u,status='Generation complete. Your complete file is ready to preview or download.'});currentHistoryId=historyId;await prepareMediaPreview(u);}
        await widget.refresh();return;
       }
       if(state.contains('fail')||state.contains('error')||state=='cancelled'){
@@ -391,7 +391,7 @@ class _MediaState extends State<MediaPage> with WidgetsBindingObserver{
       if(mounted&&!resumed)setState(()=>status='Generating… '+((i+1)*3).toString()+' seconds');
      }catch(_){if(mounted&&!resumed)setState(()=>status='Waiting for provider status…');}
     }
-    if(mounted&&!resumed)setState(()=>status='Still processing on the provider. Check History again later.');
+    if(mounted&&!resumed)setState(()=>status='Still processing on the provider. You can close Devora AI; when you reopen it, generation status will resume and the finished file will appear in History.');
    }finally{activePolls.remove(task);}
   }
   @override
