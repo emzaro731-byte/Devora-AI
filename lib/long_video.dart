@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:file_saver/file_saver.dart';
 
 const _supabaseUrl = 'https://vihbsfrwnslnmheowkhy.supabase.co';
 const _supabasePublishableKey = 'sb_publishable_HIMGxb-O6fj9O7OzT4ukuQ_jm5W8mWz';
@@ -61,11 +62,22 @@ class _LongVideoPageState extends State<LongVideoPage> {
     finally { if (mounted) setState(() => submitting = false); }
   }
   Future<void> openOutput(String url) async {
-    // Output is a signed Supabase Storage URL; use the platform browser.
-    final uri = Uri.tryParse(url);
-    if (uri == null || !uri.hasScheme) { setState(() => message = 'The output link is invalid.'); return; }
-    try { await launchUrl(uri, mode: LaunchMode.externalApplication); }
-    catch (_) { setState(() => message = 'Could not open the video link.'); }
+    setState(() => message = 'Downloading the finished MP4 to your phone…');
+    try {
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(minutes: 5));
+      if (response.statusCode < 200 || response.statusCode >= 300 || response.bodyBytes.isEmpty) {
+        throw Exception('The video download failed. Please retry.');
+      }
+      await FileSaver.instance.saveAs(
+        name: 'Devora-AI-Long-Video-${DateTime.now().millisecondsSinceEpoch}',
+        bytes: response.bodyBytes,
+        ext: 'mp4',
+        mimeType: MimeType.mp4Video,
+      );
+      if (mounted) setState(() => message = 'Video saved to your phone.');
+    } catch (e) {
+      if (mounted) setState(() => message = 'Could not save video: ${e.toString().replaceFirst('Exception: ', '')}');
+    }
   }
   @override Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Long video studio')),
