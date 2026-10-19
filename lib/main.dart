@@ -48,6 +48,40 @@ class Api{
   if(r.statusCode<200||r.statusCode>=300||d is! Map||(d['error']!=null&&d['success']!=true))throw Exception(d is Map?(d['error']??d['message']??'Request failed'): 'Request failed');
   return Map<String,dynamic>.from(d);
  }
+ // destiny-ai streams Groq/OpenAI responses as server-sent events. Collect
+ // the text deltas here so the Flutter chat can display the final answer.
+ static Future<Map<String,dynamic>> chat(String t,Map<String,dynamic> body)async{
+  final r=await http.post(Uri.parse(sbUrl+'/functions/v1/destiny-ai'),headers:headers(t),body:jsonEncode(body)).timeout(const Duration(seconds:120));
+  if(r.statusCode<200||r.statusCode>=300){
+   dynamic err;try{err=jsonDecode(r.body);}catch(_){err={'error':r.body};}
+   throw Exception(err is Map?(err['error']??err['message']??'Chat request failed'): 'Chat request failed');
+  }
+  final contentType=(r.headers['content-type']??'').toLowerCase();
+  if(!contentType.contains('text/event-stream')){
+   dynamic d;try{d=jsonDecode(r.body);}catch(_){d={'error':r.body};}
+   if(d is Map&&(d['error']!=null))throw Exception(d['error'].toString());
+   return d is Map?Map<String,dynamic>.from(d):{'reply':r.body};
+  }
+  final answer=StringBuffer();
+  String? provider,selectedModel;
+  for(final line in r.body.split(RegExp(r'\\r?\\n'))){
+   if(!line.startsWith('data:'))continue;
+   final raw=line.substring(5).trim();
+   if(raw.isEmpty||raw=='[DONE]')continue;
+   try{
+    final event=jsonDecode(raw);
+    if(event is! Map)continue;
+    if(event['type']=='delta'&&event['text'] is String)answer.write(event['text']);
+    if(event['type']=='start'){provider=event['provider']?.toString();selectedModel=event['model']?.toString();}
+    if(event['type']=='error')throw Exception(event['error']??'AI stream failed');
+   }catch(e){
+    if(e is Exception&&e.toString().startsWith('Exception:'))rethrow;
+   }
+  }
+  final reply=answer.toString().trim();
+  if(reply.isEmpty)throw Exception('Groq returned an empty response. Check GROQ_API_KEY in Supabase Function Secrets and try again.');
+  return {'reply':reply,'provider':provider??'groq','model':selectedModel};
+ }
 }
 class AuthPage extends StatefulWidget{final Future<void> Function(String,String) onLogin;const AuthPage({super.key,required this.onLogin});@override State<AuthPage> createState()=>_AuthState();}
 class _AuthState extends State<AuthPage>{
@@ -89,7 +123,7 @@ class _MainState extends State<MainPage>{int tab=0;num? wallet;@override void in
 }
 class ChatPage extends StatefulWidget{final String token;const ChatPage({super.key,required this.token});@override State<ChatPage> createState()=>_ChatState();}
 class _ChatState extends State<ChatPage>{final input=TextEditingController();final msgs=<Map<String,String>>[{'role':'assistant','content':'Hi! I am Devora AI. Ask a question or use Create to generate media.'}];bool busy=false;String mode='Chat';
- Future<void> send()async{final q=input.text.trim();if(q.isEmpty||busy)return;input.clear();setState(()=>{msgs.add({'role':'user','content':q}),busy=true});try{final d=await Api.call('destiny-ai',widget.token,{'message':q,'prompt':q,'mode':mode,'messages':msgs});final a=(d['reply']??d['response']??d['message']??d['content']??'No response returned.').toString();setState(()=>msgs.add({'role':'assistant','content':a}));}catch(x){setState(()=>msgs.add({'role':'assistant','content':'Chat error: '+x.toString().replaceFirst('Exception: ','')}));}if(mounted)setState(()=>busy=false);}
+ Future<void> send()async{final q=input.text.trim();if(q.isEmpty||busy)return;input.clear();setState(()=>{msgs.add({'role':'user','content':q}),busy=true});try{final d=await Api.chat(widget.token,{'message':q,'prompt':q,'mode':mode,'messages':msgs});final a=(d['reply']??d['response']??d['message']??d['content']??'No response returned.').toString();if(mounted)setState(()=>msgs.add({'role':'assistant','content':a}));}catch(x){if(mounted)setState(()=>msgs.add({'role':'assistant','content':'Chat error: '+x.toString().replaceFirst('Exception: ','')}));}if(mounted)setState(()=>busy=false);}
  @override Widget build(BuildContext c)=>Column(children:[Padding(padding:const EdgeInsets.all(12),child:Row(children:[const Icon(Icons.auto_awesome_rounded,color:Color(0xFF55DCCB),size:18),const SizedBox(width:8),const Text('AI ASSISTANT',style:TextStyle(color:Colors.white70,letterSpacing:1.4,fontWeight:FontWeight.w800,fontSize:11)),const Spacer(),DropdownButton<String>(value:mode,items:['Chat','Code','Study','Write','Creative'].map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(),onChanged:(v)=>setState(()=>mode=v!))])),Expanded(child:ListView.builder(padding:const EdgeInsets.all(14),itemCount:msgs.length+(busy?1:0),itemBuilder:(c,i){if(i>=msgs.length)return const Text('Devora is thinking…',style:TextStyle(color:Colors.white54));final m=msgs[i];final user=m['role']=='user';return Align(alignment:user?Alignment.centerRight:Alignment.centerLeft,child:Container(constraints:const BoxConstraints(maxWidth:340),margin:const EdgeInsets.only(bottom:12),padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:user?const Color(0xFF0A4A4B):const Color(0xFF09191B),borderRadius:BorderRadius.circular(18),border:Border.all(color:Colors.white10)),child:Text(m['content']??'',style:const TextStyle(height:1.45))));})),SafeArea(top:false,child:Padding(padding:const EdgeInsets.all(12),child:Glass(child:Row(children:[Expanded(child:TextField(controller:input,minLines:1,maxLines:4,onSubmitted:(_)=>send(),decoration:const InputDecoration(hintText:'Message Devora AI…',border:InputBorder.none,contentPadding:EdgeInsets.all(12))),),IconButton(onPressed:busy?null:send,icon:const Icon(Icons.arrow_upward),style:IconButton.styleFrom(backgroundColor:const Color(0xFF139E9B)))]))))]);}
 class MediaPage extends StatefulWidget{final String token;final Future<void> Function() refresh;const MediaPage({super.key,required this.token,required this.refresh});@override State<MediaPage> createState()=>_MediaState();}
 class _MediaState extends State<MediaPage>{
