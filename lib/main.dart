@@ -61,40 +61,35 @@ class _MainState extends State<MainPage>{int tab=0;num? wallet;@override void in
  Widget build(BuildContext c) => Scaffold(
    appBar: AppBar(
      title: const Row(children: [
-       Icon(Icons.auto_awesome, color: Color(0xFF77A7FF)),
-       SizedBox(width: 10),
-       Text('Devora AI', style: TextStyle(fontWeight: FontWeight.w800)),
+       DecoratedBox(decoration:BoxDecoration(gradient:LinearGradient(colors:[Color(0xFF91A9FF),Color(0xFF4DE0F3)]),borderRadius:BorderRadius.all(Radius.circular(12))),child:SizedBox(width:38,height:38,child:Icon(Icons.auto_awesome_rounded,color:Color(0xFF07101F),size:22))),
+       SizedBox(width:11),
+       Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
+         Text('Devora AI',style:TextStyle(fontWeight:FontWeight.w900,fontSize:18,letterSpacing:-.4)),
+         Text('YOUR CREATIVE STUDIO',style:TextStyle(fontSize:9,letterSpacing:1.5,color:Colors.white54,fontWeight:FontWeight.w600)),
+       ]),
      ]),
      actions: [
-       if (wallet != null)
-         Center(child: Padding(
-           padding: const EdgeInsets.only(right: 16),
-           child: Text('${wallet.toString()} credits'),
-         )),
+       if(wallet!=null) Padding(padding:const EdgeInsets.only(right:12),child:Center(child:Container(padding:const EdgeInsets.symmetric(horizontal:11,vertical:8),decoration:BoxDecoration(color:const Color(0xFF172746),borderRadius:BorderRadius.circular(20),border:Border.all(color:const Color(0xFF405D9B))),child:Row(children:[const Icon(Icons.bolt_rounded,size:15,color:Color(0xFF9AB8FF)),const SizedBox(width:4),Text(wallet.toString(),style:const TextStyle(fontWeight:FontWeight.w800,fontSize:12)),const SizedBox(width:3),const Text('CR',style:TextStyle(fontSize:10,color:Colors.white60))])))),
      ],
    ),
-   body: IndexedStack(index: tab, children: [
-     ChatPage(token: widget.token),
-     MediaPage(token: widget.token, refresh: refresh),
-     CreditsPage(token: widget.token, onPaid: refresh),
-     AccountPage(email: widget.email, wallet: wallet, refresh: refresh, logout: widget.onLogout),
+   body: DecoratedBox(decoration:const BoxDecoration(gradient:LinearGradient(begin:Alignment.topCenter,end:Alignment.bottomCenter,colors:[Color(0xFF0B1428),Color(0xFF070B16),Color(0xFF070B16)])),child:IndexedStack(index:tab,children:[
+     ChatPage(token:widget.token),
+     MediaPage(token:widget.token,refresh:refresh),
+     CreditsPage(token:widget.token,onPaid:refresh),
+     AccountPage(email:widget.email,wallet:wallet,refresh:refresh,logout:widget.onLogout),
+   ])),
+   bottomNavigationBar:NavigationBar(height:68,selectedIndex:tab,onDestinationSelected:(v)=>setState(()=>tab=v),destinations:const[
+     NavigationDestination(icon:Icon(Icons.chat_bubble_outline_rounded),selectedIcon:Icon(Icons.chat_rounded),label:'Chat'),
+     NavigationDestination(icon:Icon(Icons.auto_awesome_mosaic_outlined),selectedIcon:Icon(Icons.auto_awesome),label:'Create'),
+     NavigationDestination(icon:Icon(Icons.account_balance_wallet_outlined),selectedIcon:Icon(Icons.account_balance_wallet_rounded),label:'Credits'),
+     NavigationDestination(icon:Icon(Icons.person_outline_rounded),selectedIcon:Icon(Icons.person_rounded),label:'Account'),
    ]),
-   bottomNavigationBar: NavigationBar(
-     selectedIndex: tab,
-     onDestinationSelected: (v) => setState(() => tab = v),
-     destinations: const [
-       NavigationDestination(icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
-       NavigationDestination(icon: Icon(Icons.movie_creation_outlined), label: 'Create'),
-       NavigationDestination(icon: Icon(Icons.account_balance_wallet_outlined), label: 'Buy credits'),
-       NavigationDestination(icon: Icon(Icons.person_outline), label: 'Account'),
-     ],
-   ),
  );
 }
 class ChatPage extends StatefulWidget{final String token;const ChatPage({super.key,required this.token});@override State<ChatPage> createState()=>_ChatState();}
 class _ChatState extends State<ChatPage>{final input=TextEditingController();final msgs=<Map<String,String>>[{'role':'assistant','content':'Hi! I am Devora AI. Ask a question or use Create to generate media.'}];bool busy=false;String mode='Chat';
  Future<void> send()async{final q=input.text.trim();if(q.isEmpty||busy)return;input.clear();setState(()=>{msgs.add({'role':'user','content':q}),busy=true});try{final d=await Api.call('destiny-ai',widget.token,{'message':q,'prompt':q,'mode':mode,'messages':msgs});final a=(d['reply']??d['response']??d['message']??d['content']??'No response returned.').toString();setState(()=>msgs.add({'role':'assistant','content':a}));}catch(x){setState(()=>msgs.add({'role':'assistant','content':'Chat error: '+x.toString().replaceFirst('Exception: ','')}));}if(mounted)setState(()=>busy=false);}
- @override Widget build(BuildContext c)=>Column(children:[Padding(padding:const EdgeInsets.all(12),child:Row(children:[const Text('AI ASSISTANT',style:TextStyle(color:Colors.white54,letterSpacing:1.4)),const Spacer(),DropdownButton<String>(value:mode,items:['Chat','Code','Study','Write','Creative'].map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(),onChanged:(v)=>setState(()=>mode=v!))])),Expanded(child:ListView.builder(padding:const EdgeInsets.all(14),itemCount:msgs.length+(busy?1:0),itemBuilder:(c,i){if(i>=msgs.length)return const Text('Devora is thinking…',style:TextStyle(color:Colors.white54));final m=msgs[i];final user=m['role']=='user';return Align(alignment:user?Alignment.centerRight:Alignment.centerLeft,child:Container(constraints:const BoxConstraints(maxWidth:340),margin:const EdgeInsets.only(bottom:12),padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:user?const Color(0xFF1B3B70):const Color(0xFF111A2B),borderRadius:BorderRadius.circular(18),border:Border.all(color:Colors.white10)),child:Text(m['content']??'',style:const TextStyle(height:1.45))));})),SafeArea(top:false,child:Padding(padding:const EdgeInsets.all(12),child:Glass(child:Row(children:[Expanded(child:TextField(controller:input,minLines:1,maxLines:4,onSubmitted:(_)=>send(),decoration:const InputDecoration(hintText:'Message Devora AI…',border:InputBorder.none,contentPadding:EdgeInsets.all(12))),),IconButton(onPressed:busy?null:send,icon:const Icon(Icons.arrow_upward),style:IconButton.styleFrom(backgroundColor:const Color(0xFF477DFF)))]))))]);}
+ @override Widget build(BuildContext c)=>Column(children:[Padding(padding:const EdgeInsets.all(12),child:Row(children:[const Icon(Icons.auto_awesome_rounded,color:Color(0xFF8DA9FF),size:18),const SizedBox(width:8),const Text('AI ASSISTANT',style:TextStyle(color:Colors.white70,letterSpacing:1.4,fontWeight:FontWeight.w800,fontSize:11)),const Spacer(),DropdownButton<String>(value:mode,items:['Chat','Code','Study','Write','Creative'].map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(),onChanged:(v)=>setState(()=>mode=v!))])),Expanded(child:ListView.builder(padding:const EdgeInsets.all(14),itemCount:msgs.length+(busy?1:0),itemBuilder:(c,i){if(i>=msgs.length)return const Text('Devora is thinking…',style:TextStyle(color:Colors.white54));final m=msgs[i];final user=m['role']=='user';return Align(alignment:user?Alignment.centerRight:Alignment.centerLeft,child:Container(constraints:const BoxConstraints(maxWidth:340),margin:const EdgeInsets.only(bottom:12),padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:user?const Color(0xFF1B3B70):const Color(0xFF111A2B),borderRadius:BorderRadius.circular(18),border:Border.all(color:Colors.white10)),child:Text(m['content']??'',style:const TextStyle(height:1.45))));})),SafeArea(top:false,child:Padding(padding:const EdgeInsets.all(12),child:Glass(child:Row(children:[Expanded(child:TextField(controller:input,minLines:1,maxLines:4,onSubmitted:(_)=>send(),decoration:const InputDecoration(hintText:'Message Devora AI…',border:InputBorder.none,contentPadding:EdgeInsets.all(12))),),IconButton(onPressed:busy?null:send,icon:const Icon(Icons.arrow_upward),style:IconButton.styleFrom(backgroundColor:const Color(0xFF477DFF)))]))))]);}
 class MediaPage extends StatefulWidget{final String token;final Future<void> Function() refresh;const MediaPage({super.key,required this.token,required this.refresh});@override State<MediaPage> createState()=>_MediaState();}
 class _MediaState extends State<MediaPage>{
  final prompt=TextEditingController();String type='image',model='gpt-image-2-text-to-image',resolution='720p',ratio='auto',status='',result='';int duration=10;bool busy=false;
