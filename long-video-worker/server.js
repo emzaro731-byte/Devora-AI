@@ -124,7 +124,7 @@ async function uploadOutput(id, userId, file) {
   const data = await signed.json();
   const signedPath = data.signedURL || data.signedUrl;
   if (!signedPath) throw new Error('Storage did not return a download link.');
-  return signedPath.startsWith('http') ? signedPath : SUPABASE_URL + (signedPath.startsWith('/') ? signedPath : '/storage/v1' + (signedPath.startsWith('/') ? signedPath : '/' + signedPath));
+  return signedPath.startsWith('http') ? signedPath : SUPABASE_URL + '/storage/v1' + (signedPath.startsWith('/') ? signedPath : '/' + signedPath);
 }
 async function processProject(project) {
   const id = project.id;
