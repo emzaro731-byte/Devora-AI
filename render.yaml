@@ -1,0 +1,21 @@
+services:
+  - type: worker
+    name: devora-long-video-worker
+    runtime: docker
+    dockerfilePath: ./long-video-worker/Dockerfile
+    dockerContext: ./long-video-worker
+    plan: starter
+    autoDeploy: true
+    envVars:
+      - key: SUPABASE_URL
+        value: https://vihbsfrwnslnmheowkhy.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: KIE_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OUTPUT_BUCKET
+        value: devora-long-videos
+      - key: POLL_MS
+        value: "5000"
