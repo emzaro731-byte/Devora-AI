@@ -519,7 +519,7 @@ class _HistoryPageState extends State<HistoryPage> {
   finally{if(mounted)setState(()=>downloadingId='');}
  }
  @override Widget build(BuildContext context){
-  final filtered=items.where((x)=>filter=='all'||x['type']==filter).toList();
+  final filtered=items.where((x)=>filter=='all'?['image','video','music'].contains(x['type']):x['type']==filter).toList();
   return RefreshIndicator(onRefresh:loadHistory,child:ListView(padding:const EdgeInsets.all(16),children:[
    Row(children:[const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Generation history',style:TextStyle(fontSize:25,fontWeight:FontWeight.w900)),SizedBox(height:4),Text('Your images, videos and music saved to your Supabase account.',style:TextStyle(color:Colors.white60,fontSize:12))])),IconButton(onPressed:loading?null:loadHistory,icon:const Icon(Icons.refresh_rounded))]),
    const SizedBox(height:14),
