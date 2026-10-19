@@ -102,10 +102,14 @@ class _MediaState extends State<MediaPage>{
    return ListView(
      padding: const EdgeInsets.all(16),
      children: [
-       const Text('Create something amazing', style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800)),
-       const SizedBox(height: 5),
-       const Text('AI images, videos and music', style: TextStyle(color: Colors.white60)),
-       const SizedBox(height: 18),
+       Glass(child:Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(borderRadius:BorderRadius.circular(22),gradient:const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF263F79),Color(0xFF101B35),Color(0xFF11172A)])),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+         Container(width:42,height:42,decoration:BoxDecoration(color:const Color(0xFF8DA9FF).withOpacity(.16),borderRadius:BorderRadius.circular(14)),child:const Icon(Icons.auto_awesome_rounded,color:Color(0xFF9EB7FF),size:24)),
+         const SizedBox(height:14),
+         const Text('Create beyond\\nimagination',style:TextStyle(fontSize:27,height:1.08,fontWeight:FontWeight.w900,letterSpacing:-.7)),
+         const SizedBox(height:8),
+         const Text('Turn your ideas into stunning AI images, videos and music.',style:TextStyle(color:Colors.white70,height:1.4)),
+       ]))),
+       const SizedBox(height:18),
        Wrap(
          spacing: 8,
          children: ['image', 'video', 'music'].map((t) => ChoiceChip(
