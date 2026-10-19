@@ -226,15 +226,43 @@ class _MediaState extends State<MediaPage>{
    if(result.isEmpty||downloading)return;
    setState(()=>downloading=true);
    try {
-     final response=await http.get(Uri.parse(result)).timeout(const Duration(seconds:120));
+     final uri=Uri.parse(result);
+     final response=await http.get(uri).timeout(const Duration(seconds:120));
      if(response.statusCode<200||response.statusCode>=300)throw Exception('Download failed ('+response.statusCode.toString()+').');
-     final ext=type=='image'?'png':type=='video'?'mp4':'mp3';
-     final mime=type=='image'?MimeType.png:type=='video'?MimeType.mp4Video:MimeType.mp3;
-     await FileSaver.instance.saveAs(name:'Devora-AI-'+DateTime.now().millisecondsSinceEpoch.toString(),bytes:response.bodyBytes,ext:ext,mimeType:mime);
-     if(mounted)setState(()=>status='Download saved successfully.');
-   } catch(e) {
+     if(response.bodyBytes.isEmpty)throw Exception('The generated file is empty. Please try again.');
+     final contentType=(response.headers['content-type']??'').split(';').first.trim().toLowerCase();
+     final urlExt=uri.path.toLowerCase().split('.').last;
+     late final String ext;
+     late final MimeType mime;
+     if(type=='image'){
+       if(contentType=='image/jpeg'||contentType=='image/jpg'||urlExt=='jpg'||urlExt=='jpeg'){
+         ext='jpg';mime=MimeType.jpeg;
+       }else if(contentType=='image/webp'||urlExt=='webp'){
+         ext='webp';mime=MimeType.other;
+       }else if(contentType=='image/avif'||urlExt=='avif'){
+         ext='avif';mime=MimeType.other;
+       }else if(contentType=='image/gif'||urlExt=='gif'){
+         ext='gif';mime=MimeType.gif;
+       }else{
+         ext='png';mime=MimeType.png;
+       }
+     }else if(type=='video'){
+       ext='mp4';mime=MimeType.mp4Video;
+     }else{
+       ext='mp3';mime=MimeType.mp3;
+     }
+     await FileSaver.instance.saveAs(
+       name:'Devora-AI-'+DateTime.now().millisecondsSinceEpoch.toString(),
+       bytes:response.bodyBytes,
+       ext:ext,
+       mimeType:mime,
+     );
+     if(mounted)setState(()=>status=(type=='image'?'Image':type=='video'?'Video':'Music')+' downloaded successfully. Check your Downloads or saved files.');
+   }catch(e){
      if(mounted)setState(()=>status='Could not save this file: '+e.toString().replaceFirst('Exception: ',''));
-   } finally {if(mounted)setState(()=>downloading=false);}
+   }finally{
+     if(mounted)setState(()=>downloading=false);
+   }
  }
  Future<void> poll(String task)async{for(var i=0;i<120;i++){await Future.delayed(const Duration(seconds:3));if(!mounted)return;try{final d=await Api.call('devora-media',widget.token,{'action':'status','taskId':task});final state=(d['state']??'').toString().toLowerCase();final urls=d['urls'];String u=(d['url']??'').toString();if(u.isEmpty&&urls is List&&urls.isNotEmpty)u=urls.first.toString();if(u.startsWith('http')){setState(()=>{result=u,status='Finished. Open the result link to view or save it.'});return;}if(state.contains('fail')||state.contains('error')){setState(()=>status=(d['failMsg']??'Generation failed').toString());return;}setState(()=>status='Generating… '+((i+1)*3).toString()+' seconds');}catch(_){setState(()=>status='Waiting for provider status…');}}setState(()=>status='Still processing. Task ID: '+task);}
  @override
