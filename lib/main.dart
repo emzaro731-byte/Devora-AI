@@ -144,7 +144,7 @@ class _MediaState extends State<MediaPage>{
      final response=await http.get(Uri.parse(result)).timeout(const Duration(seconds:120));
      if(response.statusCode<200||response.statusCode>=300)throw Exception('Download failed ('+response.statusCode.toString()+').');
      final ext=type=='image'?'png':type=='video'?'mp4':'mp3';
-     final mime=type=='image'?MimeType.png:type=='video'?MimeType.mp4:MimeType.mp3;
+     final mime=type=='image'?MimeType.png:type=='video'?MimeType.mp4Video:MimeType.mp3;
      await FileSaver.instance.saveAs(name:'Devora-AI-'+DateTime.now().millisecondsSinceEpoch.toString(),bytes:response.bodyBytes,ext:ext,mimeType:mime);
      if(mounted)setState(()=>status='Download saved successfully.');
    } catch(e) {
