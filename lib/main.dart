@@ -235,7 +235,18 @@ class _MediaState extends State<MediaPage> with WidgetsBindingObserver{
  final visualStyles=['Photorealistic','Cinematic','Anime','3D render','Cartoon','Cyberpunk','Fantasy','Watercolor','Oil painting','Digital art','Comic book','Pixel art','Vintage film','Minimalist','Luxury editorial','Surreal','Ghibli-inspired','Claymation','Fashion editorial','Product photography','Architecture','Documentary','Neon noir','Dreamlike','Low-poly','Isometric','Pencil sketch','Charcoal drawing','Pop art','Retro futurism'];
  final musicStyles=['Afrobeats','Afro-fusion','Afropop','Amapiano','Hip-hop','Trap','R&B','Soul','Gospel','Pop','Dancehall','Reggae','House','EDM','Drill','Jazz','Blues','Rock','Acoustic','Orchestral','Cinematic soundtrack','Lo-fi','Highlife','Fuji','Amapiano-Afrobeats fusion','Synthwave','Funk','Country','Indie pop','Ambient'];
  final aspectRatios=['auto','1:1','16:9','9:16','4:3','3:4','3:2','2:3','21:9'];
- int get cost=>type=='image'?({'gpt-image-2-text-to-image':6,'nano-banana-2-1':12,'nano-banana-2':8,'nano-banana-pro':24,'grok-imagine-image-2-0/text-to-image':10,'bytedance/seedream-v4-text-to-image':8,'flux-2/pro-text-to-image':10,'qwen2-1/text-to-image':6}[model]??8):type=='video'?({'bytedance/seedance-2-5':170,'veo-3-1':255,'kling-3.0/video':70,'grok-imagine-video-1-5-preview':20}[model]??70):(model=='V6_MINI'?10:12);
+ int get cost {
+    if(type=='image') return ({'gpt-image-2-text-to-image':6,'nano-banana-2-1':12,'nano-banana-2':8,'nano-banana-pro':24,'grok-imagine-image-2-0/text-to-image':10,'bytedance/seedream-v4-text-to-image':8,'flux-2/pro-text-to-image':10,'qwen2-1/text-to-image':6}[model]??8);
+    if(type=='music') return model=='V6_MINI'?10:12;
+    final rates = model=='bytedance/seedance-2-5'
+      ? {'480p':28,'720p':63,'1080p':158}
+      : model=='veo-3-1'
+        ? {'480p':16,'720p':32,'1080p':58}
+        : model=='kling-3.0/video'
+          ? {'480p':7,'720p':14,'1080p':26}
+          : {'480p':2,'720p':3,'1080p':6};
+    return ((rates[resolution]??63)*duration).ceil();
+  }
  Future<void> generate()async{currentHistoryId=null;if(prompt.text.trim().isEmpty){setState(()=>status='Enter a song idea or lyrics first.');return;}if(type=='music'&&voiceMode!='AI voice'&&voiceBytes==null){setState(()=>status='Record or upload an audio sample first.');return;}setState(()=>{busy=true,status='Starting generation…',result=''});try{String? audioUrl;if(type=='music'&&voiceMode!='AI voice'){status='Uploading your voice reference securely…';audioUrl=await Api.uploadVoiceReference(widget.token,voiceBytes!,voiceFileName.isEmpty?'voice.m4a':voiceFileName,voiceMime);}final generationPrompt=type=='music'?prompt.text.trim():'${prompt.text.trim()}, style: $visualStyle';final body=<String,dynamic>{'type':type,'model':model,'prompt':generationPrompt,'requestId':uuid.v4(),'resolution':resolution,'aspectRatio':ratio,'duration':duration,'style':type=='music'?musicStyle.text.trim():visualStyle};if(type=='music'){body['voiceMode']=voiceMode;body['vocalGender']=voiceGender;}if(audioUrl!=null)body['audioUrl']=audioUrl;final d=await Api.call('devora-media',widget.token,body);final task=(d['taskId']??'').toString();setState(()=>status='Queued task '+task);if(task.isNotEmpty){try{currentHistoryId=await Api.addGeneration(widget.token,type:type,prompt:generationPrompt,model:model,taskId:task);}catch(_){if(mounted)setState(()=>status='Generation started; history could not be saved. Check Supabase history permissions.');}await poll(task,historyId:currentHistoryId);}}catch(x){if(mounted)setState(()=>status=x.toString().replaceFirst('Exception: ',''));}if(mounted){setState(()=>busy=false);await widget.refresh();}}
  @override void dispose(){WidgetsBinding.instance.removeObserver(this);videoController?.dispose();audioPlayer.dispose();prompt.dispose();musicStyle.dispose();recorder.dispose();super.dispose();}
  Future<void> chooseVoiceFile() async {
