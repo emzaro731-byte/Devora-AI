@@ -179,39 +179,94 @@ class _AuthState extends State<AuthPage>{
  Future<void> go()async{setState(()=>{busy=true,err=''});try{final d=await Api.auth(signup?'signup':'signin',e.text.trim(),p.text);await widget.onLogin(d['access_token'],(d['user']?['email']??e.text).toString());}catch(x){setState(()=>err=x.toString().replaceFirst('Exception: ',''));}if(mounted)setState(()=>busy=false);}
  @override Widget build(BuildContext c)=>Scaffold(body:Container(decoration:const BoxDecoration(gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF061B49),Color(0xFF060A14),Color(0xFF09051F)])),child:SafeArea(child:Center(child:SingleChildScrollView(padding:const EdgeInsets.all(24),child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:430),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[const DevoraMark(size:78),const SizedBox(height:16),const Text('Devora AI',textAlign:TextAlign.center,style:TextStyle(fontSize:32,fontWeight:FontWeight.w900)),const SizedBox(height:8),const Text('Your personal AI studio',textAlign:TextAlign.center,style:TextStyle(color:Colors.white60)),const SizedBox(height:28),Glass(child:Padding(padding:const EdgeInsets.all(14),child:Column(children:[TextField(controller:e,keyboardType:TextInputType.emailAddress,decoration:const InputDecoration(labelText:'Email',prefixIcon:Icon(Icons.mail_outline),border:InputBorder.none)),const Divider(color:Colors.white12),TextField(controller:p,obscureText:true,decoration:const InputDecoration(labelText:'Password',prefixIcon:Icon(Icons.lock_outline),border:InputBorder.none))]))),if(err.isNotEmpty)Padding(padding:const EdgeInsets.all(10),child:Text(err,style:const TextStyle(color:Colors.redAccent))),const SizedBox(height:12),FilledButton(onPressed:busy?null:go,style:FilledButton.styleFrom(minimumSize:const Size.fromHeight(52)),child:busy?const CircularProgressIndicator():Text(signup?'Create account':'Sign in')),TextButton(onPressed:()=>setState(()=>{signup=!signup,err=''}),child:Text(signup?'Already registered? Sign in':'Create a new account')),const SizedBox(height:18),const Row(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(Icons.verified_user_outlined,size:15,color:Color(0xFF21D4FF)),SizedBox(width:6),Text('Secure authentication powered by Supabase',style:TextStyle(color:Colors.white54,fontSize:11))])])))))));
 }
-class MainPage extends StatefulWidget{final String token,email;final Future<void> Function() onLogout;const MainPage({super.key,required this.token,required this.email,required this.onLogout});@override State<MainPage> createState()=>_MainState();}
-class _MainState extends State<MainPage>{int tab=0;num? wallet;final historyKey=GlobalKey<_HistoryPageState>();@override void initState(){super.initState();refresh();}
+class MainPage extends StatefulWidget {
+ final String token,email; final Future<void> Function() onLogout;
+ const MainPage({super.key,required this.token,required this.email,required this.onLogout});
+ @override State<MainPage> createState()=>_MainState();
+}
+class _MainState extends State<MainPage>{
+ int tab=0; num? wallet;
+ final historyKey=GlobalKey<_HistoryPageState>();
+ @override void initState(){super.initState();refresh();}
  Future<void> refresh()async{try{final d=await Api.call('devora-media',widget.token,{'action':'wallet'});if(mounted)setState(()=>wallet=d['balance']);}catch(_){}}
- @override
- Widget build(BuildContext c) => Scaffold(
-   appBar: AppBar(
-     title: const Row(children: [
-       DecoratedBox(decoration:BoxDecoration(gradient:LinearGradient(colors:[Color(0xFF12D8FF),Color(0xFF6538FF)]),borderRadius:BorderRadius.all(Radius.circular(12))),child:const SizedBox(width:38,height:38,child:DevoraMark(size:30,compact:true))),
-       SizedBox(width:11),
-       Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
-         Text('Devora AI',style:TextStyle(fontWeight:FontWeight.w900,fontSize:18,letterSpacing:-.4)),
-         Text('YOUR CREATIVE STUDIO',style:TextStyle(fontSize:9,letterSpacing:1.5,color:Colors.white54,fontWeight:FontWeight.w600)),
-       ]),
-     ]),
-     actions: [
-       if(wallet!=null) Padding(padding:const EdgeInsets.only(right:12),child:Center(child:Container(padding:const EdgeInsets.symmetric(horizontal:11,vertical:8),decoration:BoxDecoration(color:const Color(0xFF101A49),borderRadius:BorderRadius.circular(20),border:Border.all(color:const Color(0xFF5535C9))),child:Row(children:[const Icon(Icons.bolt_rounded,size:15,color:Color(0xFF22D7FF)),const SizedBox(width:4),Text(wallet.toString(),style:const TextStyle(fontWeight:FontWeight.w800,fontSize:12)),const SizedBox(width:3),const Text('CR',style:TextStyle(fontSize:10,color:Colors.white60))])))),
-     ],
-   ),
-   body: DecoratedBox(decoration:const BoxDecoration(gradient:LinearGradient(begin:Alignment.topCenter,end:Alignment.bottomCenter,colors:[Color(0xFF061719),Color(0xFF030607),Color(0xFF030607)])),child:IndexedStack(index:tab,children:[
-     ChatPage(token:widget.token),
-     MediaPage(token:widget.token,refresh:refresh),
-     HistoryPage(key:historyKey,token:widget.token),
-     CreditsPage(token:widget.token,onPaid:refresh),
-     AccountPage(email:widget.email,wallet:wallet,refresh:refresh,logout:widget.onLogout),
-   ])),
-   bottomNavigationBar:NavigationBar(height:68,selectedIndex:tab,onDestinationSelected:(v){setState(()=>tab=v);if(v==2)historyKey.currentState?.loadHistory();},destinations:const[
-     NavigationDestination(icon:Icon(Icons.chat_bubble_outline_rounded),selectedIcon:Icon(Icons.chat_rounded),label:'Chat'),
-     NavigationDestination(icon:Icon(Icons.auto_awesome_mosaic_outlined),selectedIcon:Icon(Icons.auto_awesome),label:'Create'),
-     NavigationDestination(icon:Icon(Icons.history_rounded),selectedIcon:Icon(Icons.history_toggle_off_rounded),label:'History'),
-     NavigationDestination(icon:Icon(Icons.account_balance_wallet_outlined),selectedIcon:Icon(Icons.account_balance_wallet_rounded),label:'Credits'),
-     NavigationDestination(icon:Icon(Icons.person_outline_rounded),selectedIcon:Icon(Icons.person_rounded),label:'Account'),
-   ]),
+ void go(int value)=>setState(()=>tab=value);
+ int get navIndex=>tab==0?0:tab==2?1:tab==3?2:tab==5?3:tab==4?4:0;
+ @override Widget build(BuildContext c)=>Scaffold(
+  backgroundColor:const Color(0xFF08090B),
+  appBar:AppBar(
+   backgroundColor:const Color(0xFF08090B),surfaceTintColor:Colors.transparent,
+   leading:Padding(padding:const EdgeInsets.all(9),child:const DevoraMark(size:34,compact:true)),
+   title:const SizedBox.shrink(),
+   actions:[
+    IconButton(tooltip:'AI chat',onPressed:()=>go(1),icon:const Icon(Icons.chat_bubble_outline_rounded,color:Colors.white70)),
+    const SizedBox(width:4),
+    Container(margin:const EdgeInsets.symmetric(vertical:9),padding:const EdgeInsets.symmetric(horizontal:12),decoration:BoxDecoration(color:const Color(0xFF1B1B22),borderRadius:BorderRadius.circular(24)),child:Row(children:[const Icon(Icons.card_giftcard_rounded,color:Color(0xFFFF71B8),size:19),const SizedBox(width:8),Icon(Icons.bolt_rounded,color:Colors.amber.shade400,size:18),const SizedBox(width:3),Text(wallet?.toString()??'30',style:const TextStyle(fontWeight:FontWeight.w800)),const SizedBox(width:8),const Text('Subscribe',style:TextStyle(fontWeight:FontWeight.w700))])),
+    const SizedBox(width:10),
+   ],
+  ),
+  body:IndexedStack(index:tab,children:[
+   HomeDashboard(email:widget.email,wallet:wallet,onCreate:()=>go(2),onChat:()=>go(1),onDiscover:()=>go(3),onProfile:()=>go(5),onCredits:()=>go(4)),
+   ChatPage(token:widget.token),
+   MediaPage(token:widget.token,refresh:refresh),
+   HistoryPage(key:historyKey,token:widget.token),
+   CreditsPage(token:widget.token,onPaid:refresh),
+   AccountPage(email:widget.email,wallet:wallet,refresh:refresh,logout:widget.onLogout),
+  ]),
+  bottomNavigationBar:Container(color:const Color(0xFF08090B),child:SafeArea(top:false,child:SizedBox(height:70,child:Row(mainAxisAlignment:MainAxisAlignment.spaceAround,children:[
+   _navItem(Icons.home_rounded,'Create',0),
+   _navItem(Icons.auto_awesome_mosaic_outlined,'Template',2),
+   GestureDetector(onTap:()=>go(2),child:Container(width:58,height:58,decoration:const BoxDecoration(shape:BoxShape.circle,gradient:LinearGradient(colors:[Color(0xFFFF8D5B),Color(0xFFDC45B7),Color(0xFF7446FF)])),child:const Icon(Icons.add_rounded,size:34,color:Colors.white))),
+   _navItem(Icons.explore_outlined,'Discover',3),
+   _navItem(Icons.person_outline_rounded,'Me',5),
+  ])))),
  );
+ Widget _navItem(IconData icon,String label,int target)=>InkWell(onTap:()=>go(target),child:SizedBox(width:64,child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(icon,size:25,color:tab==target?Colors.white:const Color(0xFF777985)),const SizedBox(height:4),Text(label,style:TextStyle(fontSize:11,color:tab==target?Colors.white:const Color(0xFFB5B5BE)))])));
+}
+class HomeDashboard extends StatelessWidget{
+ final String email; final num? wallet; final VoidCallback onCreate,onChat,onDiscover,onProfile,onCredits;
+ const HomeDashboard({super.key,required this.email,required this.wallet,required this.onCreate,required this.onChat,required this.onDiscover,required this.onProfile,required this.onCredits});
+ @override Widget build(BuildContext context)=>Container(color:const Color(0xFF08090B),child:SafeArea(top:false,child:ListView(padding:const EdgeInsets.fromLTRB(12,10,12,24),children:[
+  Row(children:[const Spacer(),_pill(Icons.card_giftcard_rounded,'Earn Credits',onCredits),const SizedBox(width:8),_pill(Icons.bolt_rounded,'Subscribe',onCredits)]),
+  const SizedBox(height:24),
+  Row(children:[
+   Expanded(child:Text('Create something\namazing.',style:const TextStyle(fontSize:28,fontWeight:FontWeight.w900,height:1.12,letterSpacing:-.7))),
+   Container(width:54,height:54,decoration:BoxDecoration(shape:BoxShape.circle,color:const Color(0xFF202127),border:Border.all(color:Colors.white12)),child:IconButton(onPressed:onProfile,icon:const Icon(Icons.person_outline_rounded))),
+  ]),
+  const SizedBox(height:7),
+  Text('Your ideas, transformed with AI.',style:TextStyle(color:Colors.white.withOpacity(.58),fontSize:14)),
+  const SizedBox(height:22),
+  Row(children:[
+   Expanded(child:_feature('Create\nImage','Generate beautiful images',Icons.image_outlined,[const Color(0xFF26212A),const Color(0xFF18191F)],onCreate)),
+   const SizedBox(width:8),
+   Expanded(child:_feature('Image to\nVideo','Bring photos to life',Icons.play_circle_outline_rounded,[const Color(0xFF1A2A2B),const Color(0xFF202027)],onCreate)),
+  ]),
+  const SizedBox(height:8),
+  Row(children:[
+   Expanded(child:_feature('Text to\nVideo','Create from a prompt',Icons.movie_creation_outlined,[const Color(0xFF25212F),const Color(0xFF1B1B22)],onCreate)),
+   const SizedBox(width:8),
+   Expanded(child:_feature('VibeMVA','Make AI music',Icons.graphic_eq_rounded,[const Color(0xFF1D292B),const Color(0xFF202027)],onCreate)),
+  ]),
+  const SizedBox(height:24),
+  Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[const Text('Quick tools',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800)),TextButton(onPressed:onCreate,child:const Text('See all'))]),
+  const SizedBox(height:8),
+  Row(children:[
+   _tool(Icons.mic_none_rounded,'Lip-Sync',onCreate),_tool(Icons.graphic_eq_rounded,'Sound Effects',onCreate),_tool(Icons.image_search_outlined,'Edit Image',onCreate),_tool(Icons.auto_fix_high_rounded,'Transition',onCreate),_tool(Icons.keyboard_arrow_down_rounded,'More',onCreate),
+  ]),
+  const SizedBox(height:26),
+  Row(children:[const Expanded(child:Text('Made for you',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800))),TextButton(onPressed:onDiscover,child:const Text('Explore'))]),
+  const SizedBox(height:10),
+  SizedBox(height:176,child:ListView(scrollDirection:Axis.horizontal,children:[
+   _suggestion(Icons.auto_awesome,'AI Image Studio','Turn a simple idea into art',onCreate),
+   _suggestion(Icons.movie_filter_outlined,'Video Creator','Create cinematic moments',onCreate),
+   _suggestion(Icons.music_note_rounded,'Music Studio','Find your sound',onCreate),
+  ])),
+  const SizedBox(height:16),
+  OutlinedButton.icon(onPressed:onChat,icon:const Icon(Icons.chat_bubble_outline_rounded),label:const Text('Chat with Devora AI'),style:OutlinedButton.styleFrom(foregroundColor:Colors.white,side:const BorderSide(color:Colors.white24),minimumSize:const Size.fromHeight(48))),
+ ])));
+ Widget _pill(IconData icon,String text,VoidCallback onTap)=>InkWell(onTap:onTap,borderRadius:BorderRadius.circular(22),child:Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),decoration:BoxDecoration(color:const Color(0xFF202026),borderRadius:BorderRadius.circular(22)),child:Row(children:[Icon(icon,size:17,color:const Color(0xFFFFB25D)),const SizedBox(width:6),Text(text,style:const TextStyle(fontSize:12,fontWeight:FontWeight.w700))])));
+ Widget _feature(String title,String subtitle,IconData icon,List<Color> colors,VoidCallback onTap)=>InkWell(onTap:onTap,borderRadius:BorderRadius.circular(20),child:Container(height:138,padding:const EdgeInsets.all(15),decoration:BoxDecoration(borderRadius:BorderRadius.circular(20),gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:colors),border:Border.all(color:Colors.white.withOpacity(.05))),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Icon(icon,size:25,color:const Color(0xFFFFA06D)),const Spacer(),Text(title,style:const TextStyle(fontSize:19,fontWeight:FontWeight.w800,height:1.05)),const SizedBox(height:4),Text(subtitle,style:TextStyle(fontSize:10,color:Colors.white.withOpacity(.58)),maxLines:1,overflow:TextOverflow.ellipsis)])));
+ Widget _tool(IconData icon,String label,VoidCallback onTap)=>Expanded(child:InkWell(onTap:onTap,borderRadius:BorderRadius.circular(16),child:Padding(padding:const EdgeInsets.symmetric(vertical:6),child:Column(children:[Container(width:48,height:48,decoration:const BoxDecoration(color:Color(0xFF1B1C22),shape:BoxShape.circle),child:Icon(icon,color:Colors.white,size:22)),const SizedBox(height:7),Text(label,textAlign:TextAlign.center,style:const TextStyle(fontSize:10,color:Colors.white70),maxLines:2)]))));
+ Widget _suggestion(IconData icon,String title,String sub,VoidCallback onTap)=>Container(width:220,margin:const EdgeInsets.only(right:10),padding:const EdgeInsets.all(16),decoration:BoxDecoration(borderRadius:BorderRadius.circular(20),gradient:const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF29242B),Color(0xFF17181D)]),border:Border.all(color:Colors.white10)),child:InkWell(onTap:onTap,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Icon(icon,size:29,color:const Color(0xFFFF9C70)),const Spacer(),Text(title,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:17)),const SizedBox(height:5),Text(sub,style:const TextStyle(color:Colors.white60,fontSize:12))])));
 }
 class ChatPage extends StatefulWidget{final String token;const ChatPage({super.key,required this.token});@override State<ChatPage> createState()=>_ChatState();}
 class _ChatState extends State<ChatPage>{
