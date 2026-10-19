@@ -50,6 +50,42 @@ class Api{
   if(d['access_token']==null)throw Exception('Account created. Confirm your email, then sign in.');
   return Map<String,dynamic>.from(d);
  }
+ static Future<String> currentUserId(String t) async {
+  final r=await http.get(Uri.parse(sbUrl+'/auth/v1/user'),headers:headers(t)).timeout(const Duration(seconds:30));
+  if(r.statusCode<200||r.statusCode>=300)throw Exception('Your session expired. Sign in again.');
+  final d=jsonDecode(r.body);
+  final id=(d is Map?d['id']:'')?.toString()??'';
+  if(id.isEmpty)throw Exception('Could not verify your account.');
+  return id;
+ }
+ static Future<String> addGeneration(String t,{required String type,required String prompt,required String model,required String taskId}) async {
+  final userId=await currentUserId(t);
+  final r=await http.post(Uri.parse(sbUrl+'/rest/v1/ai_generations?select=id'),
+   headers:{...headers(t),'Prefer':'return=representation'},
+   body:jsonEncode({'user_id':userId,'type':type,'prompt':prompt,'model':model,'task_id':taskId,'status':'processing','result_urls':[]})
+  ).timeout(const Duration(seconds:30));
+  if(r.statusCode<200||r.statusCode>=300)throw Exception('Could not save generation history: '+r.body);
+  final d=jsonDecode(r.body);
+  if(d is! List||d.isEmpty||d.first['id']==null)throw Exception('Supabase did not return a history ID.');
+  return d.first['id'].toString();
+ }
+ static Future<void> updateGeneration(String t,String id,{required String status,String? url}) async {
+  final values=<String,dynamic>{'status':status};
+  if(url!=null&&url.isNotEmpty)values['result_urls']=[url];
+  if(status=='completed'||status=='failed')values['completed_at']=DateTime.now().toUtc().toIso8601String();
+  final r=await http.patch(Uri.parse(sbUrl+'/rest/v1/ai_generations?id=eq.'+Uri.encodeQueryComponent(id)),
+   headers:{...headers(t),'Prefer':'return=minimal'},body:jsonEncode(values)
+  ).timeout(const Duration(seconds:30));
+  if(r.statusCode<200||r.statusCode>=300)throw Exception('Could not update generation history: '+r.body);
+ }
+ static Future<List<Map<String,dynamic>>> loadGenerations(String t) async {
+  final uri=Uri.parse(sbUrl+'/rest/v1/ai_generations?select=id,type,prompt,model,task_id,status,result_urls,created_at,completed_at&order=created_at.desc&limit=100');
+  final r=await http.get(uri,headers:headers(t)).timeout(const Duration(seconds:30));
+  if(r.statusCode<200||r.statusCode>=300)throw Exception('Could not load history: '+r.body);
+  final d=jsonDecode(r.body);
+  if(d is! List)return [];
+  return d.map((e)=>Map<String,dynamic>.from(e as Map)).toList();
+ }
  static Future<String> uploadVoiceReference(String t,Uint8List bytes,String filename,String mime)async{
   if(bytes.isEmpty)throw Exception('The voice recording is empty.');
   if(bytes.length>25*1024*1024)throw Exception('Please choose an audio file smaller than 25 MB.');
@@ -116,10 +152,10 @@ class AuthPage extends StatefulWidget{final Future<void> Function(String,String)
 class _AuthState extends State<AuthPage>{
  final e=TextEditingController(),p=TextEditingController();bool signup=false,busy=false;String err='';
  Future<void> go()async{setState(()=>{busy=true,err=''});try{final d=await Api.auth(signup?'signup':'signin',e.text.trim(),p.text);await widget.onLogin(d['access_token'],(d['user']?['email']??e.text).toString());}catch(x){setState(()=>err=x.toString().replaceFirst('Exception: ',''));}if(mounted)setState(()=>busy=false);}
- @override Widget build(BuildContext c)=>Scaffold(body:Container(decoration:const BoxDecoration(gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF07383A),Color(0xFF060A14),Color(0xFF040B0C)])),child:SafeArea(child:Center(child:SingleChildScrollView(padding:const EdgeInsets.all(24),child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:430),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[const Icon(Icons.auto_awesome,size:66,color:Color(0xFF55DCCB)),const SizedBox(height:16),const Text('Devora AI',textAlign:TextAlign.center,style:TextStyle(fontSize:32,fontWeight:FontWeight.w900)),const SizedBox(height:8),const Text('Your personal AI studio',textAlign:TextAlign.center,style:TextStyle(color:Colors.white60)),const SizedBox(height:28),Glass(child:Padding(padding:const EdgeInsets.all(14),child:Column(children:[TextField(controller:e,keyboardType:TextInputType.emailAddress,decoration:const InputDecoration(labelText:'Email',prefixIcon:Icon(Icons.mail_outline),border:InputBorder.none)),const Divider(color:Colors.white12),TextField(controller:p,obscureText:true,decoration:const InputDecoration(labelText:'Password',prefixIcon:Icon(Icons.lock_outline),border:InputBorder.none))]))),if(err.isNotEmpty)Padding(padding:const EdgeInsets.all(10),child:Text(err,style:const TextStyle(color:Colors.redAccent))),const SizedBox(height:12),FilledButton(onPressed:busy?null:go,style:FilledButton.styleFrom(minimumSize:const Size.fromHeight(52)),child:busy?const CircularProgressIndicator():Text(signup?'Create account':'Sign in')),TextButton(onPressed:()=>setState(()=>{signup=!signup,err=''}),child:Text(signup?'Already registered? Sign in':'Create a new account'))])))))));
+ @override Widget build(BuildContext c)=>Scaffold(body:Container(decoration:const BoxDecoration(gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF07383A),Color(0xFF060A14),Color(0xFF040B0C)])),child:SafeArea(child:Center(child:SingleChildScrollView(padding:const EdgeInsets.all(24),child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:430),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[const Icon(Icons.auto_awesome,size:66,color:Color(0xFF55DCCB)),const SizedBox(height:16),const Text('Devora AI',textAlign:TextAlign.center,style:TextStyle(fontSize:32,fontWeight:FontWeight.w900)),const SizedBox(height:8),const Text('Your personal AI studio',textAlign:TextAlign.center,style:TextStyle(color:Colors.white60)),const SizedBox(height:28),Glass(child:Padding(padding:const EdgeInsets.all(14),child:Column(children:[TextField(controller:e,keyboardType:TextInputType.emailAddress,decoration:const InputDecoration(labelText:'Email',prefixIcon:Icon(Icons.mail_outline),border:InputBorder.none)),const Divider(color:Colors.white12),TextField(controller:p,obscureText:true,decoration:const InputDecoration(labelText:'Password',prefixIcon:Icon(Icons.lock_outline),border:InputBorder.none))]))),if(err.isNotEmpty)Padding(padding:const EdgeInsets.all(10),child:Text(err,style:const TextStyle(color:Colors.redAccent))),const SizedBox(height:12),FilledButton(onPressed:busy?null:go,style:FilledButton.styleFrom(minimumSize:const Size.fromHeight(52)),child:busy?const CircularProgressIndicator():Text(signup?'Create account':'Sign in')),TextButton(onPressed:()=>setState(()=>{signup=!signup,err=''}),child:Text(signup?'Already registered? Sign in':'Create a new account')),const SizedBox(height:18),const Row(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(Icons.verified_user_outlined,size:15,color:Color(0xFF55DCCB)),SizedBox(width:6),Text('Secure authentication powered by Supabase',style:TextStyle(color:Colors.white54,fontSize:11))])])))))));
 }
 class MainPage extends StatefulWidget{final String token,email;final Future<void> Function() onLogout;const MainPage({super.key,required this.token,required this.email,required this.onLogout});@override State<MainPage> createState()=>_MainState();}
-class _MainState extends State<MainPage>{int tab=0;num? wallet;@override void initState(){super.initState();refresh();}
+class _MainState extends State<MainPage>{int tab=0;num? wallet;final historyKey=GlobalKey<_HistoryPageState>();@override void initState(){super.initState();refresh();}
  Future<void> refresh()async{try{final d=await Api.call('devora-media',widget.token,{'action':'wallet'});if(mounted)setState(()=>wallet=d['balance']);}catch(_){}}
  @override
  Widget build(BuildContext c) => Scaffold(
@@ -139,12 +175,14 @@ class _MainState extends State<MainPage>{int tab=0;num? wallet;@override void in
    body: DecoratedBox(decoration:const BoxDecoration(gradient:LinearGradient(begin:Alignment.topCenter,end:Alignment.bottomCenter,colors:[Color(0xFF061719),Color(0xFF030607),Color(0xFF030607)])),child:IndexedStack(index:tab,children:[
      ChatPage(token:widget.token),
      MediaPage(token:widget.token,refresh:refresh),
+     HistoryPage(key:historyKey,token:widget.token),
      CreditsPage(token:widget.token,onPaid:refresh),
      AccountPage(email:widget.email,wallet:wallet,refresh:refresh,logout:widget.onLogout),
    ])),
-   bottomNavigationBar:NavigationBar(height:68,selectedIndex:tab,onDestinationSelected:(v)=>setState(()=>tab=v),destinations:const[
+   bottomNavigationBar:NavigationBar(height:68,selectedIndex:tab,onDestinationSelected:(v){setState(()=>tab=v);if(v==2)historyKey.currentState?.loadHistory();},destinations:const[
      NavigationDestination(icon:Icon(Icons.chat_bubble_outline_rounded),selectedIcon:Icon(Icons.chat_rounded),label:'Chat'),
      NavigationDestination(icon:Icon(Icons.auto_awesome_mosaic_outlined),selectedIcon:Icon(Icons.auto_awesome),label:'Create'),
+     NavigationDestination(icon:Icon(Icons.history_rounded),selectedIcon:Icon(Icons.history_toggle_off_rounded),label:'History'),
      NavigationDestination(icon:Icon(Icons.account_balance_wallet_outlined),selectedIcon:Icon(Icons.account_balance_wallet_rounded),label:'Credits'),
      NavigationDestination(icon:Icon(Icons.person_outline_rounded),selectedIcon:Icon(Icons.person_rounded),label:'Account'),
    ]),
@@ -156,13 +194,13 @@ class _ChatState extends State<ChatPage>{final input=TextEditingController();fin
  @override Widget build(BuildContext c)=>Column(children:[Padding(padding:const EdgeInsets.all(12),child:Row(children:[const Icon(Icons.auto_awesome_rounded,color:Color(0xFF55DCCB),size:18),const SizedBox(width:8),const Text('AI ASSISTANT',style:TextStyle(color:Colors.white70,letterSpacing:1.4,fontWeight:FontWeight.w800,fontSize:11)),const Spacer(),DropdownButton<String>(value:mode,items:['Chat','Code','Study','Write','Creative'].map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(),onChanged:(v)=>setState(()=>mode=v!))])),Expanded(child:ListView.builder(padding:const EdgeInsets.all(14),itemCount:msgs.length+(busy?1:0),itemBuilder:(c,i){if(i>=msgs.length)return const Text('Devora is thinking…',style:TextStyle(color:Colors.white54));final m=msgs[i];final user=m['role']=='user';return Align(alignment:user?Alignment.centerRight:Alignment.centerLeft,child:Container(constraints:const BoxConstraints(maxWidth:340),margin:const EdgeInsets.only(bottom:12),padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:user?const Color(0xFF0A4A4B):const Color(0xFF09191B),borderRadius:BorderRadius.circular(18),border:Border.all(color:Colors.white10)),child:Text(m['content']??'',style:const TextStyle(height:1.45))));})),SafeArea(top:false,child:Padding(padding:const EdgeInsets.all(12),child:Glass(child:Row(children:[Expanded(child:TextField(controller:input,minLines:1,maxLines:4,onSubmitted:(_)=>send(),decoration:const InputDecoration(hintText:'Message Devora AI…',border:InputBorder.none,contentPadding:EdgeInsets.all(12))),),IconButton(onPressed:busy?null:send,icon:const Icon(Icons.arrow_upward),style:IconButton.styleFrom(backgroundColor:const Color(0xFF139E9B)))]))))]);}
 class MediaPage extends StatefulWidget{final String token;final Future<void> Function() refresh;const MediaPage({super.key,required this.token,required this.refresh});@override State<MediaPage> createState()=>_MediaState();}
 class _MediaState extends State<MediaPage>{
- final prompt=TextEditingController(),musicStyle=TextEditingController(text:'Afrobeats, melodic, polished studio production');String type='image',model='gpt-image-2-text-to-image',resolution='720p',ratio='auto',status='',result='',voiceMode='AI voice',voiceFileName='',voiceMime='audio/mp4',visualStyle='Photorealistic';Uint8List? voiceBytes;final AudioRecorder recorder=AudioRecorder();int duration=10;String voiceGender='m';bool busy=false,downloading=false,recording=false; VideoPlayerController? videoController; final AudioPlayer audioPlayer=AudioPlayer(); bool mediaPlaying=false,previewLoading=false;
+ String? currentHistoryId; final prompt=TextEditingController(),musicStyle=TextEditingController(text:'Afrobeats, melodic, polished studio production');String type='image',model='gpt-image-2-text-to-image',resolution='720p',ratio='auto',status='',result='',voiceMode='AI voice',voiceFileName='',voiceMime='audio/mp4',visualStyle='Photorealistic';Uint8List? voiceBytes;final AudioRecorder recorder=AudioRecorder();int duration=10;String voiceGender='m';bool busy=false,downloading=false,recording=false; VideoPlayerController? videoController; final AudioPlayer audioPlayer=AudioPlayer(); bool mediaPlaying=false,previewLoading=false;
  final models={'image':['gpt-image-2-text-to-image','nano-banana-2-1','nano-banana-2','nano-banana-pro','grok-imagine-image-2-0/text-to-image','bytedance/seedream-v4-text-to-image','flux-2/pro-text-to-image','flux-2/flex-text-to-image','qwen2-1/text-to-image'],'video':['bytedance/seedance-2-5','veo-3-1','kling-3.0/video','grok-imagine-video-1-5-preview'],'music':['V6','V6_MINI','V6_WILD']};
  final visualStyles=['Photorealistic','Cinematic','Anime','3D render','Cartoon','Cyberpunk','Fantasy','Watercolor','Oil painting','Digital art','Comic book','Pixel art','Vintage film','Minimalist','Luxury editorial','Surreal','Ghibli-inspired','Claymation','Fashion editorial','Product photography','Architecture','Documentary','Neon noir','Dreamlike','Low-poly','Isometric','Pencil sketch','Charcoal drawing','Pop art','Retro futurism'];
  final musicStyles=['Afrobeats','Afro-fusion','Afropop','Amapiano','Hip-hop','Trap','R&B','Soul','Gospel','Pop','Dancehall','Reggae','House','EDM','Drill','Jazz','Blues','Rock','Acoustic','Orchestral','Cinematic soundtrack','Lo-fi','Highlife','Fuji','Amapiano-Afrobeats fusion','Synthwave','Funk','Country','Indie pop','Ambient'];
  final aspectRatios=['auto','1:1','16:9','9:16','4:3','3:4','3:2','2:3','21:9'];
  int get cost=>type=='image'?({'gpt-image-2-text-to-image':6,'nano-banana-2-1':12,'nano-banana-2':8,'nano-banana-pro':24,'grok-imagine-image-2-0/text-to-image':10,'bytedance/seedream-v4-text-to-image':8,'flux-2/pro-text-to-image':10,'qwen2-1/text-to-image':6}[model]??8):type=='video'?({'bytedance/seedance-2-5':170,'veo-3-1':255,'kling-3.0/video':70,'grok-imagine-video-1-5-preview':20}[model]??70):(model=='V6_MINI'?10:12);
- Future<void> generate()async{if(prompt.text.trim().isEmpty){setState(()=>status='Enter a song idea or lyrics first.');return;}if(type=='music'&&voiceMode!='AI voice'&&voiceBytes==null){setState(()=>status='Record or upload an audio sample first.');return;}setState(()=>{busy=true,status='Starting generation…',result=''});try{String? audioUrl;if(type=='music'&&voiceMode!='AI voice'){status='Uploading your voice reference securely…';audioUrl=await Api.uploadVoiceReference(widget.token,voiceBytes!,voiceFileName.isEmpty?'voice.m4a':voiceFileName,voiceMime);}final generationPrompt=type=='music'?prompt.text.trim():'${prompt.text.trim()}, style: $visualStyle';final body=<String,dynamic>{'type':type,'model':model,'prompt':generationPrompt,'requestId':uuid.v4(),'resolution':resolution,'aspectRatio':ratio,'duration':duration,'style':type=='music'?musicStyle.text.trim():visualStyle};if(type=='music'){body['voiceMode']=voiceMode;body['vocalGender']=voiceGender;}if(audioUrl!=null)body['audioUrl']=audioUrl;final d=await Api.call('devora-media',widget.token,body);final task=(d['taskId']??'').toString();setState(()=>status='Queued task '+task);if(task.isNotEmpty)await poll(task);}catch(x){if(mounted)setState(()=>status=x.toString().replaceFirst('Exception: ',''));}if(mounted){setState(()=>busy=false);await widget.refresh();}}
+ Future<void> generate()async{currentHistoryId=null;if(prompt.text.trim().isEmpty){setState(()=>status='Enter a song idea or lyrics first.');return;}if(type=='music'&&voiceMode!='AI voice'&&voiceBytes==null){setState(()=>status='Record or upload an audio sample first.');return;}setState(()=>{busy=true,status='Starting generation…',result=''});try{String? audioUrl;if(type=='music'&&voiceMode!='AI voice'){status='Uploading your voice reference securely…';audioUrl=await Api.uploadVoiceReference(widget.token,voiceBytes!,voiceFileName.isEmpty?'voice.m4a':voiceFileName,voiceMime);}final generationPrompt=type=='music'?prompt.text.trim():'${prompt.text.trim()}, style: $visualStyle';final body=<String,dynamic>{'type':type,'model':model,'prompt':generationPrompt,'requestId':uuid.v4(),'resolution':resolution,'aspectRatio':ratio,'duration':duration,'style':type=='music'?musicStyle.text.trim():visualStyle};if(type=='music'){body['voiceMode']=voiceMode;body['vocalGender']=voiceGender;}if(audioUrl!=null)body['audioUrl']=audioUrl;final d=await Api.call('devora-media',widget.token,body);final task=(d['taskId']??'').toString();setState(()=>status='Queued task '+task);if(task.isNotEmpty){try{currentHistoryId=await Api.addGeneration(widget.token,type:type,prompt:generationPrompt,model:model,taskId:task);}catch(_){if(mounted)setState(()=>status='Generation started; history could not be saved. Check Supabase history permissions.');}await poll(task);}}catch(x){if(mounted)setState(()=>status=x.toString().replaceFirst('Exception: ',''));}if(mounted){setState(()=>busy=false);await widget.refresh();}}
  @override void dispose(){videoController?.dispose();audioPlayer.dispose();prompt.dispose();musicStyle.dispose();recorder.dispose();super.dispose();}\n Future<void> chooseVoiceFile() async {
   try {
     final pick = await FilePicker.platform.pickFiles(type: FileType.audio, withData: true);
@@ -289,7 +327,8 @@ class _MediaState extends State<MediaPage>{
      if(mounted)setState(()=>downloading=false);
    }
  }
- Future<void> poll(String task)async{for(var i=0;i<120;i++){await Future.delayed(const Duration(seconds:3));if(!mounted)return;try{final d=await Api.call('devora-media',widget.token,{'action':'status','taskId':task});final state=(d['state']??'').toString().toLowerCase();final urls=d['urls'];String u=(d['url']??'').toString();if(u.isEmpty&&urls is List&&urls.isNotEmpty)u=urls.first.toString();if(u.startsWith('http')){setState(()=>{result=u,status='Finished. Preview or download your media inside Devora AI.'});await prepareMediaPreview(u);return;}if(state.contains('fail')||state.contains('error')){setState(()=>status=(d['failMsg']??'Generation failed').toString());return;}setState(()=>status='Generating… '+((i+1)*3).toString()+' seconds');}catch(_){setState(()=>status='Waiting for provider status…');}}setState(()=>status='Still processing. Task ID: '+task);}
+ Future<void> saveHistoryStatus(String status,{String? url})async{final id=currentHistoryId;if(id==null)return;try{await Api.updateGeneration(widget.token,id,status:status,url:url);}catch(_){} }
+ Future<void> poll(String task)async{for(var i=0;i<120;i++){await Future.delayed(const Duration(seconds:3));if(!mounted)return;try{final d=await Api.call('devora-media',widget.token,{'action':'status','taskId':task});final state=(d['state']??'').toString().toLowerCase();final urls=d['urls'];String u=(d['url']??'').toString();if(u.isEmpty&&urls is List&&urls.isNotEmpty)u=urls.first.toString();if(u.startsWith('http')){setState(()=>{result=u,status='Finished. Preview or download your media inside Devora AI.'});await saveHistoryStatus('completed',url:u);await prepareMediaPreview(u);return;}if(state.contains('fail')||state.contains('error')){setState(()=>status=(d['failMsg']??'Generation failed').toString());await saveHistoryStatus('failed');return;}setState(()=>status='Generating… '+((i+1)*3).toString()+' seconds');}catch(_){setState(()=>status='Waiting for provider status…');}}setState(()=>status='Still processing. Task ID: '+task);}
  @override
  Widget build(BuildContext c) {
    return ListView(
@@ -439,6 +478,77 @@ class _MediaState extends State<MediaPage>{
    );
  }
 }
+
+class HistoryPage extends StatefulWidget {
+ final String token;
+ const HistoryPage({super.key,required this.token});
+ @override State<HistoryPage> createState()=>_HistoryPageState();
+}
+class _HistoryPageState extends State<HistoryPage> {
+ List<Map<String,dynamic>> items=[];
+ bool loading=true;
+ String error='',filter='all',downloadingId='';
+ @override void initState(){super.initState();loadHistory();}
+ Future<void> loadHistory() async {
+  if(!mounted)return;
+  setState(()=>loading=true);
+  try{final rows=await Api.loadGenerations(widget.token);if(mounted)setState(()=>{items=rows,error=''});}
+  catch(e){if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));}
+  finally{if(mounted)setState(()=>loading=false);}
+ }
+ String? mediaUrl(Map<String,dynamic> item){
+  final urls=item['result_urls'];
+  if(urls is List&&urls.isNotEmpty)return urls.first.toString();
+  if(urls is String&&urls.isNotEmpty){try{final d=jsonDecode(urls);if(d is List&&d.isNotEmpty)return d.first.toString();}catch(_){}}
+  return null;
+ }
+ String dateLabel(dynamic raw){try{final d=DateTime.parse(raw.toString()).toLocal();return '${d.day.toString().padLeft(2,'0')}/${d.month.toString().padLeft(2,'0')}/${d.year} • ${d.hour.toString().padLeft(2,'0')}:${d.minute.toString().padLeft(2,'0')}';}catch(_){return 'Date unavailable';}}
+ Future<void> download(Map<String,dynamic> item) async {
+  final url=mediaUrl(item);if(url==null||!url.startsWith('http'))return;
+  final id=(item['id']??'').toString();setState(()=>downloadingId=id);
+  try{
+   final r=await http.get(Uri.parse(url)).timeout(const Duration(minutes:2));
+   if(r.statusCode<200||r.statusCode>=300||r.bodyBytes.isEmpty)throw Exception('This media link may have expired. Generate it again to get a fresh file.');
+   final type=(item['type']??'image').toString();
+   final ext=type=='video'?'mp4':type=='music'?'mp3':'png';
+   final mime=type=='video'?MimeType.mp4Video:type=='music'?MimeType.mp3:MimeType.png;
+   await FileSaver.instance.saveAs(name:'Devora-AI-${type}-${DateTime.now().millisecondsSinceEpoch}',bytes:r.bodyBytes,ext:ext,mimeType:mime);
+   if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Saved to your phone.')));
+  }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}
+  finally{if(mounted)setState(()=>downloadingId='');}
+ }
+ @override Widget build(BuildContext context){
+  final filtered=items.where((x)=>filter=='all'||x['type']==filter).toList();
+  return RefreshIndicator(onRefresh:loadHistory,child:ListView(padding:const EdgeInsets.all(16),children:[
+   Row(children:[const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Generation history',style:TextStyle(fontSize:25,fontWeight:FontWeight.w900)),SizedBox(height:4),Text('Your images, videos and music saved to your Supabase account.',style:TextStyle(color:Colors.white60,fontSize:12))])),IconButton(onPressed:loading?null:loadHistory,icon:const Icon(Icons.refresh_rounded))]),
+   const SizedBox(height:14),
+   Wrap(spacing:8,children:['all','image','video','music'].map((v)=>ChoiceChip(label:Text(v=='all'?'ALL':v.toUpperCase()),selected:filter==v,onSelected:(_)=>setState(()=>filter=v)).toList()),
+   const SizedBox(height:12),
+   if(loading&&items.isEmpty)const Padding(padding:EdgeInsets.all(40),child:Center(child:CircularProgressIndicator())),
+   if(error.isNotEmpty)Glass(child:Padding(padding:const EdgeInsets.all(14),child:Column(children:[Text(error,style:const TextStyle(color:Colors.redAccent)),TextButton(onPressed:loadHistory,child:const Text('Try again'))]))),
+   if(!loading&&error.isEmpty&&filtered.isEmpty)Glass(child:const Padding(padding:EdgeInsets.all(28),child:Column(children:[Icon(Icons.history_rounded,size:42,color:Color(0xFF55DCCB)),SizedBox(height:10),Text('No generations yet',style:TextStyle(fontWeight:FontWeight.w800,fontSize:17)),SizedBox(height:5),Text('Your successful image, video and music creations will appear here.',textAlign:TextAlign.center,style:TextStyle(color:Colors.white60))]))),
+   ...filtered.map((item){
+    final type=(item['type']??'image').toString();
+    final state=(item['status']??'processing').toString().toLowerCase();
+    final url=mediaUrl(item);
+    final prompt=(item['prompt']??'').toString();
+    final id=(item['id']??'').toString();
+    final icon=type=='video'?Icons.movie_creation_outlined:type=='music'?Icons.music_note_rounded:Icons.image_outlined;
+    final ready=state=='completed'&&url!=null&&url.startsWith('http');
+    return Padding(padding:const EdgeInsets.only(bottom:10),child:Glass(child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+     Row(children:[Container(width:42,height:42,decoration:BoxDecoration(color:const Color(0xFF55DCCB).withOpacity(.12),borderRadius:BorderRadius.circular(12)),child:Icon(icon,color:const Color(0xFF55DCCB))),const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(type.toUpperCase(),style:const TextStyle(fontWeight:FontWeight.w800,letterSpacing:1)),Text((item['model']??'AI model').toString(),style:const TextStyle(color:Colors.white54,fontSize:11))])),Container(padding:const EdgeInsets.symmetric(horizontal:9,vertical:5),decoration:BoxDecoration(color:state=='completed'?const Color(0xFF124B3F):state=='failed'?const Color(0xFF55272D):const Color(0xFF273342),borderRadius:BorderRadius.circular(20)),child:Text(state.toUpperCase(),style:const TextStyle(fontSize:9,fontWeight:FontWeight.w800)))]),
+     const SizedBox(height:10),
+     if(type=='image'&&ready)ClipRRect(borderRadius:BorderRadius.circular(12),child:Image.network(url,fit:BoxFit.cover,width:double.infinity,height:190,errorBuilder:(c,e,st)=>Container(height:70,alignment:Alignment.center,child:const Text('Preview unavailable')))),
+     Text(prompt, maxLines:3,overflow:TextOverflow.ellipsis,style:const TextStyle(height:1.35)),
+     const SizedBox(height:7),
+     Text(dateLabel(item['created_at']),style:const TextStyle(color:Colors.white38,fontSize:11)),
+     if(ready)Padding(padding:const EdgeInsets.only(top:8),child:OutlinedButton.icon(onPressed:downloadingId==id?null:()=>download(item),icon:downloadingId==id?const SizedBox(width:16,height:16,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.download_rounded),label:Text(downloadingId==id?'Saving…':'Download to phone'))),
+    ]))));
+   }),
+  ]));
+ }
+}
+
 class AccountPage extends StatelessWidget{final String email;final num? wallet;final Future<void> Function() refresh,logout;const AccountPage({super.key,required this.email,required this.wallet,required this.refresh,required this.logout});@override Widget build(BuildContext c)=>ListView(padding:const EdgeInsets.all(16),children:[const Text('Account',style:TextStyle(fontSize:25,fontWeight:FontWeight.w800)),const SizedBox(height:16),Glass(child:ListTile(leading:const Icon(Icons.person_outline),title:Text(email),subtitle:const Text('Devora AI member'))),const SizedBox(height:10),Glass(child:ListTile(leading:const Icon(Icons.bolt,color:Color(0xFF8DB1FF)),title:Text(wallet==null?'Credit balance unavailable':wallet.toString()+' credits'),trailing:IconButton(onPressed:refresh,icon:const Icon(Icons.refresh)))),const SizedBox(height:22),FilledButton.tonalIcon(onPressed:()=>logout(),icon:const Icon(Icons.logout),label:const Text('Sign out'))]);}
 class Glass extends StatelessWidget{final Widget child;const Glass({super.key,required this.child});@override Widget build(BuildContext c)=>Container(decoration:BoxDecoration(color:Colors.white.withOpacity(.045),borderRadius:BorderRadius.circular(20),border:Border.all(color:Colors.white.withOpacity(.1))),child:child);}
 
