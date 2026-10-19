@@ -1,0 +1,13 @@
+{
+  "name": "devora-long-video-worker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Background worker for Devora AI long-video generation and FFmpeg assembly",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
