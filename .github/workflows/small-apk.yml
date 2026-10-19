@@ -1,0 +1,34 @@
+name: Build small Devora AI APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'lib/**'
+      - 'android/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/small-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build optimized ARM64 release APK
+        run: flutter build apk --release --target-platform android-arm64 --split-debug-info=build/symbols --obfuscate
+      - name: Show APK size
+        run: du -h build/app/outputs/flutter-apk/app-release.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: devora-ai-arm64-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
