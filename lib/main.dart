@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 const sbUrl='https://vihbsfrwnslnmheowkhy.supabase.co';
 const sbKey='sb_publishable_HIMGxb-O6fj9O7OzT4ukuQ_jm5W8mWz';
@@ -63,6 +64,7 @@ class _MainState extends State<MainPage>{int tab=0;num? wallet;@override void in
    body: IndexedStack(index: tab, children: [
      ChatPage(token: widget.token),
      MediaPage(token: widget.token, refresh: refresh),
+     CreditsPage(token: widget.token, onPaid: refresh),
      AccountPage(email: widget.email, wallet: wallet, refresh: refresh, logout: widget.onLogout),
    ]),
    bottomNavigationBar: NavigationBar(
@@ -71,6 +73,7 @@ class _MainState extends State<MainPage>{int tab=0;num? wallet;@override void in
      destinations: const [
        NavigationDestination(icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
        NavigationDestination(icon: Icon(Icons.movie_creation_outlined), label: 'Create'),
+       NavigationDestination(icon: Icon(Icons.account_balance_wallet_outlined), label: 'Buy credits'),
        NavigationDestination(icon: Icon(Icons.person_outline), label: 'Account'),
      ],
    ),
@@ -181,3 +184,109 @@ class _MediaState extends State<MediaPage>{
 }
 class AccountPage extends StatelessWidget{final String email;final num? wallet;final Future<void> Function() refresh,logout;const AccountPage({super.key,required this.email,required this.wallet,required this.refresh,required this.logout});@override Widget build(BuildContext c)=>ListView(padding:const EdgeInsets.all(16),children:[const Text('Account',style:TextStyle(fontSize:25,fontWeight:FontWeight.w800)),const SizedBox(height:16),Glass(child:ListTile(leading:const Icon(Icons.person_outline),title:Text(email),subtitle:const Text('Devora AI member'))),const SizedBox(height:10),Glass(child:ListTile(leading:const Icon(Icons.bolt,color:Color(0xFF8DB1FF)),title:Text(wallet==null?'Credit balance unavailable':wallet.toString()+' credits'),trailing:IconButton(onPressed:refresh,icon:const Icon(Icons.refresh)))),const SizedBox(height:22),FilledButton.tonalIcon(onPressed:()=>logout(),icon:const Icon(Icons.logout),label:const Text('Sign out'))]);}
 class Glass extends StatelessWidget{final Widget child;const Glass({super.key,required this.child});@override Widget build(BuildContext c)=>Container(decoration:BoxDecoration(color:Colors.white.withOpacity(.045),borderRadius:BorderRadius.circular(20),border:Border.all(color:Colors.white.withOpacity(.1))),child:child);}
+
+
+class CreditsPage extends StatefulWidget {
+ final String token;
+ final Future<void> Function() onPaid;
+ const CreditsPage({super.key, required this.token, required this.onPaid});
+ @override State<CreditsPage> createState() => _CreditsPageState();
+}
+class _CreditsPageState extends State<CreditsPage> {
+ bool busy = false;
+ String message = '';
+ String? reference;
+ num? amount;
+ num? credits;
+ final packages = const [
+  {'id':'pack_1333','credits':100,'amount':1333},
+  {'id':'pack_2665','credits':200,'amount':2665},
+  {'id':'pack_3998','credits':300,'amount':3998},
+  {'id':'pack_5330','credits':400,'amount':5330},
+  {'id':'pack_6663','credits':500,'amount':6663},
+  {'id':'pack_7996','credits':600,'amount':7996},
+  {'id':'pack_9328','credits':700,'amount':9328},
+  {'id':'pack_10661','credits':800,'amount':10661},
+  {'id':'pack_11993','credits':900,'amount':11993},
+  {'id':'pack_13326','credits':1000,'amount':13326},
+  {'id':'pack_26652','credits':2000,'amount':26652},
+  {'id':'pack_39978','credits':3000,'amount':39978},
+  {'id':'pack_53304','credits':4000,'amount':53304},
+  {'id':'pack_66630','credits':5000,'amount':66630},
+  {'id':'pack_79956','credits':6000,'amount':79956},
+  {'id':'pack_93282','credits':7000,'amount':93282},
+  {'id':'pack_106608','credits':8000,'amount':106608},
+  {'id':'pack_119934','credits':9000,'amount':119934},
+  {'id':'pack_133260','credits':10000,'amount':133260},
+  {'id':'pack_146586','credits':11000,'amount':146586},
+  {'id':'pack_159912','credits':12000,'amount':159912},
+ ];
+ String naira(num n) => '₦${n.toStringAsFixed(0).replaceAllMapped(RegExp(r'\\B(?=(\\d{3})+(?!\\d))'), (m) => ',')}';
+ Future<void> buy(Map<String,dynamic> p) async {
+  setState(() { busy=true; message='Creating secure Flutterwave checkout…'; reference=null; });
+  try {
+   final d = await Api.call('devora-credit-payments', widget.token, {'action':'create','packageId':p['id']});
+   final ref = (d['reference'] ?? '').toString();
+   final link = (d['checkoutUrl'] ?? '').toString();
+   if (!link.startsWith('https://')) throw Exception('Flutterwave did not return a valid checkout link.');
+   setState(() { reference=ref; amount=d['amountNgn'] as num? ?? p['amount'] as num; credits=d['credits'] as num? ?? p['credits'] as num; message='Checkout opened. Complete payment, return here, then tap Verify payment.'; });
+   final opened = await launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication);
+   if (!opened && mounted) setState(() => message='Checkout link is ready, but could not open automatically. Reference: $ref');
+  } catch(e) {
+   if(mounted) setState(()=>message=e.toString().replaceFirst('Exception: ',''));
+  } finally { if(mounted) setState(()=>busy=false); }
+ }
+ Future<void> verify() async {
+  final ref=reference;
+  if(ref==null || ref.isEmpty) return;
+  setState(()=>{busy=true,message='Verifying payment with Flutterwave…'});
+  try {
+   final d=await Api.call('devora-credit-payments',widget.token,{'action':'verify','reference':ref});
+   if(d['success']==true) {
+    setState(()=>message='Payment verified! ${d['credits'] ?? credits} credits are available. Your balance: ${d['balance'] ?? 'refreshed'}.');
+    await widget.onPaid();
+   } else {
+    setState(()=>message=(d['message']??'Payment is not confirmed yet. Try again shortly.').toString());
+   }
+  } catch(e) {
+   setState(()=>message=e.toString().replaceFirst('Exception: ',''));
+  } finally { if(mounted) setState(()=>busy=false); }
+ }
+ @override Widget build(BuildContext context) => ListView(
+  padding: const EdgeInsets.all(16),
+  children: [
+   const Text('Buy credits',style:TextStyle(fontSize:26,fontWeight:FontWeight.w800)),
+   const SizedBox(height:6),
+   const Text('Secure checkout with Flutterwave. Pay by card, bank transfer or USSD where available.',style:TextStyle(color:Colors.white60)),
+   const SizedBox(height:16),
+   Glass(child:Padding(padding:const EdgeInsets.all(14),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+    const Row(children:[Icon(Icons.verified_user_outlined,color:Color(0xFF8DB1FF)),SizedBox(width:8),Text('Protected payment',style:TextStyle(fontWeight:FontWeight.bold))]),
+    const SizedBox(height:6),
+    const Text('Credits are added only after the server verifies a successful payment. Never share your card PIN or OTP.',style:TextStyle(color:Colors.white60,fontSize:12)),
+   ]))),
+   const SizedBox(height:16),
+   ...packages.map((p)=>Padding(
+    padding:const EdgeInsets.only(bottom:9),
+    child:Glass(child:ListTile(
+     leading:const CircleAvatar(backgroundColor:Color(0xFF182E56),child:Icon(Icons.bolt,color:Color(0xFF9DC0FF))),
+     title:Text('${p['credits']} credits',style:const TextStyle(fontWeight:FontWeight.bold)),
+     subtitle:Text(naira(p['amount'] as num)),
+     trailing:FilledButton(onPressed:busy?null:()=>buy(p),child:const Text('Buy')),
+    )),
+   )),
+   if(reference!=null) ...[
+    const SizedBox(height:8),
+    Glass(child:Padding(padding:const EdgeInsets.all(14),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+     const Text('PAYMENT REFERENCE',style:TextStyle(color:Colors.white54,fontSize:11,letterSpacing:1.3)),
+     const SizedBox(height:6),
+     SelectableText(reference!,style:const TextStyle(color:Color(0xFF9DC0FF),fontWeight:FontWeight.bold)),
+     if(amount!=null&&credits!=null) Padding(padding:const EdgeInsets.only(top:5),child:Text('${naira(amount!)} • ${credits!} credits')),
+     const SizedBox(height:10),
+     FilledButton.icon(onPressed:busy?null:verify,icon:const Icon(Icons.verified_outlined),label:const Text('Verify payment'),style:FilledButton.styleFrom(minimumSize:const Size.fromHeight(48))),
+    ]))),
+   ],
+   if(busy) const Padding(padding:EdgeInsets.all(12),child:Center(child:CircularProgressIndicator())),
+   if(message.isNotEmpty) Padding(padding:const EdgeInsets.only(top:12),child:Glass(child:Padding(padding:const EdgeInsets.all(12),child:Text(message)))),
+  ],
+ );
+}
