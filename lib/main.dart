@@ -11,6 +11,7 @@ import 'package:file_saver/file_saver.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
+import 'long_video.dart';
 
 const sbUrl='https://vihbsfrwnslnmheowkhy.supabase.co';
 const sbKey='sb_publishable_HIMGxb-O6fj9O7OzT4ukuQ_jm5W8mWz';
@@ -291,6 +292,15 @@ class _MediaState extends State<MediaPage>{
            }),
          )).toList(),
        ),
+       if (type == 'video') ...[
+         const SizedBox(height: 10),
+         SizedBox(width: double.infinity, child: OutlinedButton.icon(
+           onPressed: busy ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => LongVideoPage(token: widget.token))),
+           icon: const Icon(Icons.movie_creation_outlined),
+           label: const Text('Create a video up to 1 hour — automatic scenes'),
+           style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+         )),
+       ],
        const SizedBox(height: 12),
        Glass(child: Padding(
          padding: const EdgeInsets.all(14),
