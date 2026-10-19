@@ -304,7 +304,7 @@ class _MediaState extends State<MediaPage> with WidgetsBindingObserver{
   finally{resumingPending=false;}
  }
 
- String? currentHistoryId; final prompt=TextEditingController(),musicStyle=TextEditingController(text:'Afrobeats, melodic, polished studio production');String type='image',model='gpt-image-2-text-to-image',resolution='720p',ratio='auto',status='',result='',voiceMode='AI voice',voiceFileName='',voiceMime='audio/mp4',visualStyle='Photorealistic';Uint8List? voiceBytes;final AudioRecorder recorder=AudioRecorder();int duration=10;String voiceGender='m';bool busy=false,downloading=false,recording=false; VideoPlayerController? videoController; final AudioPlayer audioPlayer=AudioPlayer(); bool mediaPlaying=false,previewLoading=false;
+ String? currentHistoryId; final prompt=TextEditingController(),musicStyle=TextEditingController(text:'Afrobeats, melodic, polished studio production');String type='image',videoMode='Text to Video',model='gpt-image-2-text-to-image',resolution='720p',ratio='auto',status='',result='',voiceMode='AI voice',voiceFileName='',voiceMime='audio/mp4',visualStyle='Photorealistic';Uint8List? voiceBytes;final AudioRecorder recorder=AudioRecorder();int duration=10;String voiceGender='m';Uint8List? sourceMediaBytes;String sourceMediaName='',sourceMediaMime='';bool busy=false,downloading=false,recording=false; VideoPlayerController? videoController; final AudioPlayer audioPlayer=AudioPlayer(); bool mediaPlaying=false,previewLoading=false;
  final models={'image':['gpt-image-2-text-to-image','nano-banana-2-1','nano-banana-2','nano-banana-pro','grok-imagine-image-2-0/text-to-image','bytedance/seedream-v4-text-to-image','flux-2/pro-text-to-image','flux-2/flex-text-to-image','qwen2-1/text-to-image'],'video':['bytedance/seedance-2-5','veo-3-1','kling-3.0/video','grok-imagine-video-1-5-preview'],'music':['V6','V6_MINI','V6_WILD']};
  final visualStyles=['Photorealistic','Cinematic','Anime','3D render','Cartoon','Cyberpunk','Fantasy','Watercolor','Oil painting','Digital art','Comic book','Pixel art','Vintage film','Minimalist','Luxury editorial','Surreal','Ghibli-inspired','Claymation','Fashion editorial','Product photography','Architecture','Documentary','Neon noir','Dreamlike','Low-poly','Isometric','Pencil sketch','Charcoal drawing','Pop art','Retro futurism'];
  final musicStyles=['Afrobeats','Afro-fusion','Afropop','Amapiano','Hip-hop','Trap','R&B','Soul','Gospel','Pop','Dancehall','Reggae','House','EDM','Drill','Jazz','Blues','Rock','Acoustic','Orchestral','Cinematic soundtrack','Lo-fi','Highlife','Fuji','Amapiano-Afrobeats fusion','Synthwave','Funk','Country','Indie pop','Ambient'];
@@ -321,7 +321,20 @@ class _MediaState extends State<MediaPage> with WidgetsBindingObserver{
           : {'480p':2,'720p':3,'1080p':6};
     return ((rates[resolution]??63)*duration).ceil();
   }
- Future<void> generate()async{currentHistoryId=null;if(prompt.text.trim().isEmpty){setState(()=>status='Enter a song idea or lyrics first.');return;}if(type=='music'&&voiceMode!='AI voice'&&voiceBytes==null){setState(()=>status='Record or upload an audio sample first.');return;}setState(()=>{busy=true,status='Starting generation…',result=''});try{String? audioUrl;if(type=='music'&&voiceMode!='AI voice'){status='Uploading your voice reference securely…';audioUrl=await Api.uploadVoiceReference(widget.token,voiceBytes!,voiceFileName.isEmpty?'voice.m4a':voiceFileName,voiceMime);}final generationPrompt=type=='music'?prompt.text.trim():'${prompt.text.trim()}, style: $visualStyle';final body=<String,dynamic>{'type':type,'model':model,'prompt':generationPrompt,'requestId':uuid.v4(),'resolution':resolution,'aspectRatio':ratio,'duration':duration,'style':type=='music'?musicStyle.text.trim():visualStyle};if(type=='music'){body['voiceMode']=voiceMode;body['vocalGender']=voiceGender;}if(audioUrl!=null)body['audioUrl']=audioUrl;final d=await Api.call('devora-media',widget.token,body);final task=(d['taskId']??'').toString();setState(()=>status='Queued task '+task);if(task.isNotEmpty){try{currentHistoryId=await Api.addGeneration(widget.token,type:type,prompt:generationPrompt,model:model,taskId:task);}catch(_){if(mounted)setState(()=>status='Generation started; history could not be saved. Check Supabase history permissions.');}await poll(task,historyId:currentHistoryId);}}catch(x){if(mounted)setState(()=>status=x.toString().replaceFirst('Exception: ',''));}if(mounted){setState(()=>busy=false);await widget.refresh();}}
+ Future<void> chooseSourceMedia() async {
+  try {
+    final pick=await FilePicker.platform.pickFiles(type:videoMode=='Image to Video'?FileType.image:FileType.video,withData:true);
+    if(pick==null||pick.files.isEmpty)return;
+    final file=pick.files.first;
+    Uint8List? bytes=file.bytes;
+    if(bytes==null&&file.path!=null)bytes=await File(file.path!).readAsBytes();
+    if(bytes==null||bytes.isEmpty)throw Exception('Could not read the selected media.');
+    if(bytes.length>25*1024*1024)throw Exception('Please choose a file smaller than 25 MB.');
+    final ext=(file.extension??'').toLowerCase();
+    setState(()=>{sourceMediaBytes=bytes,sourceMediaName=file.name,sourceMediaMime=videoMode=='Image to Video'?(ext=='png'?'image/png':ext=='webp'?'image/webp':'image/jpeg'):(ext=='mov'?'video/quicktime':'video/mp4'),status:'Selected: '+file.name});
+  }catch(e){if(mounted)setState(()=>status='Could not select media: '+e.toString().replaceFirst('Exception: ',''));}
+ }
+ Future<void> generate()async{currentHistoryId=null;if(prompt.text.trim().isEmpty){setState(()=>status='Enter a song idea or lyrics first.');return;}if(type=='video'&&videoMode!='Text to Video'&&sourceMediaBytes==null){setState(()=>status='Choose a source '+(videoMode=='Image to Video'?'image':'video')+' first.');return;}if(type=='music'&&voiceMode!='AI voice'&&voiceBytes==null){setState(()=>status='Record or upload an audio sample first.');return;}setState(()=>{busy=true,status='Starting generation…',result=''});try{String? audioUrl;if(type=='music'&&voiceMode!='AI voice'){status='Uploading your voice reference securely…';audioUrl=await Api.uploadVoiceReference(widget.token,voiceBytes!,voiceFileName.isEmpty?'voice.m4a':voiceFileName,voiceMime);}final generationPrompt=type=='music'?prompt.text.trim():'${prompt.text.trim()}, style: $visualStyle';String? sourceUrl;if(type=='video'&&videoMode!='Text to Video'){setState(()=>status='Uploading source media…');sourceUrl=await Api.uploadVoiceReference(widget.token,sourceMediaBytes!,sourceMediaName,sourceMediaMime);}final body=<String,dynamic>{'type':type,'generationMode':type=='video'?videoMode:null,'model':model,'prompt':generationPrompt,'requestId':uuid.v4(),'resolution':resolution,'aspectRatio':ratio,'duration':duration,'style':type=='music'?musicStyle.text.trim():visualStyle};if(type=='music'){body['voiceMode']=voiceMode;body['vocalGender']=voiceGender;}if(audioUrl!=null)body['audioUrl']=audioUrl;if(sourceUrl!=null){body['sourceMediaUrl']=sourceUrl;body[videoMode=='Image to Video'?'imageUrl':'videoUrl']=sourceUrl;}final d=await Api.call('devora-media',widget.token,body);final task=(d['taskId']??'').toString();setState(()=>status='Queued task '+task);if(task.isNotEmpty){try{currentHistoryId=await Api.addGeneration(widget.token,type:type,prompt:generationPrompt,model:model,taskId:task);}catch(_){if(mounted)setState(()=>status='Generation started; history could not be saved. Check Supabase history permissions.');}await poll(task,historyId:currentHistoryId);}}catch(x){if(mounted)setState(()=>status=x.toString().replaceFirst('Exception: ',''));}if(mounted){setState(()=>busy=false);await widget.refresh();}}
  @override void dispose(){WidgetsBinding.instance.removeObserver(this);videoController?.dispose();audioPlayer.dispose();prompt.dispose();musicStyle.dispose();recorder.dispose();super.dispose();}
  Future<void> chooseVoiceFile() async {
   try {
@@ -492,19 +505,26 @@ class _MediaState extends State<MediaPage> with WidgetsBindingObserver{
          const Text('Turn your ideas into stunning AI images, videos and music.',style:TextStyle(color:Colors.white70,height:1.4)),
        ]))),
        const SizedBox(height:18),
-       Wrap(
-         spacing: 8,
-         children: ['image', 'video', 'music'].map((t) => ChoiceChip(
-           label: Text(t.toUpperCase()),
-           selected: type == t,
-           onSelected: busy ? null : (_) => setState(() {
-             type = t;
-             model = models[t]!.first;
-             status = '';
-             result = '';
-           }),
-         )).toList(),
-       ),
+       Wrap(spacing:8,runSpacing:8,children:[
+        ChoiceChip(label:const Text('IMAGE'),selected:type=='image',onSelected:busy?null:(_)=>setState(()=>{type='image';model=models['image']!.first;status='';result='';})),
+        ChoiceChip(label:const Text('VIDEO'),selected:type=='video',onSelected:busy?null:(_)=>setState(()=>{type='video';model=models['video']!.first;status='';result='';})),
+        ChoiceChip(label:const Text('MUSIC'),selected:type=='music',onSelected:busy?null:(_)=>setState(()=>{type='music';model=models['music']!.first;status='';result='';})),
+       ]),
+       if(type=='video')...[
+        const SizedBox(height:14),
+        const Text('VIDEO CREATION MODE',style:TextStyle(color:Colors.white54,letterSpacing:1.3,fontSize:11,fontWeight:FontWeight.w700)),
+        const SizedBox(height:8),
+        Wrap(spacing:8,runSpacing:8,children:['Text to Video','Image to Video','Video to Video'].map((v)=>ChoiceChip(label:Text(v),selected:videoMode==v,onSelected:busy?null:(_)=>setState(()=>{videoMode=v;sourceMediaBytes=null;sourceMediaName='';sourceMediaMime='';status='';result='';}))).toList()),
+        if(videoMode!='Text to Video')...[
+         const SizedBox(height:8),
+         Container(padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:const Color(0xFF1B1C22),borderRadius:BorderRadius.circular(16),border:Border.all(color:Colors.white12)),child:Row(children:[
+          Icon(videoMode=='Image to Video'?Icons.add_photo_alternate_outlined:Icons.video_library_outlined,color:const Color(0xFFFF9C70),size:28),
+          const SizedBox(width:10),
+          Expanded(child:Text(sourceMediaName.isEmpty?'Select the source '+(videoMode=='Image to Video'?'image':'video')+'. Maximum 25 MB.':sourceMediaName,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white70,fontSize:12))),
+          OutlinedButton(onPressed:busy?null:chooseSourceMedia,child:Text(sourceMediaName.isEmpty?'Choose':'Change')),
+         ])),
+        ],
+       ],
        if (type == 'video') ...[
          const SizedBox(height: 10),
          SizedBox(width: double.infinity, child: OutlinedButton.icon(
