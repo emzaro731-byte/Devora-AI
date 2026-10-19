@@ -16,6 +16,8 @@ dependencies:
   file_picker: ^10.3.7
   path_provider: ^2.1.5
   record: ^6.1.2
+  video_player: ^2.9.2
+  audioplayers: ^6.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
