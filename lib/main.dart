@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:file_saver/file_saver.dart';
 
 const sbUrl='https://vihbsfrwnslnmheowkhy.supabase.co';
 const sbKey='sb_publishable_HIMGxb-O6fj9O7OzT4ukuQ_jm5W8mWz';
@@ -92,10 +93,30 @@ class _ChatState extends State<ChatPage>{final input=TextEditingController();fin
  @override Widget build(BuildContext c)=>Column(children:[Padding(padding:const EdgeInsets.all(12),child:Row(children:[const Icon(Icons.auto_awesome_rounded,color:Color(0xFF55DCCB),size:18),const SizedBox(width:8),const Text('AI ASSISTANT',style:TextStyle(color:Colors.white70,letterSpacing:1.4,fontWeight:FontWeight.w800,fontSize:11)),const Spacer(),DropdownButton<String>(value:mode,items:['Chat','Code','Study','Write','Creative'].map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(),onChanged:(v)=>setState(()=>mode=v!))])),Expanded(child:ListView.builder(padding:const EdgeInsets.all(14),itemCount:msgs.length+(busy?1:0),itemBuilder:(c,i){if(i>=msgs.length)return const Text('Devora is thinking…',style:TextStyle(color:Colors.white54));final m=msgs[i];final user=m['role']=='user';return Align(alignment:user?Alignment.centerRight:Alignment.centerLeft,child:Container(constraints:const BoxConstraints(maxWidth:340),margin:const EdgeInsets.only(bottom:12),padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:user?const Color(0xFF0A4A4B):const Color(0xFF09191B),borderRadius:BorderRadius.circular(18),border:Border.all(color:Colors.white10)),child:Text(m['content']??'',style:const TextStyle(height:1.45))));})),SafeArea(top:false,child:Padding(padding:const EdgeInsets.all(12),child:Glass(child:Row(children:[Expanded(child:TextField(controller:input,minLines:1,maxLines:4,onSubmitted:(_)=>send(),decoration:const InputDecoration(hintText:'Message Devora AI…',border:InputBorder.none,contentPadding:EdgeInsets.all(12))),),IconButton(onPressed:busy?null:send,icon:const Icon(Icons.arrow_upward),style:IconButton.styleFrom(backgroundColor:const Color(0xFF139E9B)))]))))]);}
 class MediaPage extends StatefulWidget{final String token;final Future<void> Function() refresh;const MediaPage({super.key,required this.token,required this.refresh});@override State<MediaPage> createState()=>_MediaState();}
 class _MediaState extends State<MediaPage>{
- final prompt=TextEditingController();String type='image',model='gpt-image-2-text-to-image',resolution='720p',ratio='auto',status='',result='';int duration=10;bool busy=false;
+ final prompt=TextEditingController();String type='image',model='gpt-image-2-text-to-image',resolution='720p',ratio='auto',status='',result='';int duration=10;bool busy=false,downloading=false;
  final models={'image':['gpt-image-2-text-to-image','nano-banana-2-1','nano-banana-2','nano-banana-pro','grok-imagine-image-2-0/text-to-image','bytedance/seedream-v4-text-to-image','flux-2/pro-text-to-image','qwen2-1/text-to-image'],'video':['bytedance/seedance-2-5','veo-3-1','kling-3.0/video','grok-imagine-video-1-5-preview'],'music':['V6','V6_MINI','V6_WILD']};
  int get cost=>type=='image'?({'gpt-image-2-text-to-image':6,'nano-banana-2-1':12,'nano-banana-2':8,'nano-banana-pro':24,'grok-imagine-image-2-0/text-to-image':10,'bytedance/seedream-v4-text-to-image':8,'flux-2/pro-text-to-image':10,'qwen2-1/text-to-image':6}[model]??8):type=='video'?({'bytedance/seedance-2-5':170,'veo-3-1':255,'kling-3.0/video':70,'grok-imagine-video-1-5-preview':20}[model]??70):(model=='V6_MINI'?10:12);
  Future<void> generate()async{if(prompt.text.trim().isEmpty){setState(()=>status='Enter a prompt first.');return;}setState(()=>{busy=true,status='Starting generation…',result=''});try{final d=await Api.call('devora-media',widget.token,{'type':type,'model':model,'prompt':prompt.text.trim(),'requestId':uuid.v4(),'resolution':resolution,'aspectRatio':ratio,'duration':duration});final task=(d['taskId']??'').toString();setState(()=>status='Queued task '+task);if(task.isNotEmpty)await poll(task);}catch(x){setState(()=>status=x.toString().replaceFirst('Exception: ',''));}if(mounted){setState(()=>busy=false);await widget.refresh();}}
+ Future<void> openResult() async {
+   final uri=Uri.tryParse(result);
+   if(uri==null||!uri.hasScheme){if(mounted)setState(()=>status='The media link is invalid.');return;}
+   final ok=await launchUrl(uri,mode:LaunchMode.externalApplication);
+   if(!ok&&mounted)setState(()=>status='Could not open the original media. Try downloading it.');
+ }
+ Future<void> downloadResult() async {
+   if(result.isEmpty||downloading)return;
+   setState(()=>downloading=true);
+   try {
+     final response=await http.get(Uri.parse(result)).timeout(const Duration(seconds:120));
+     if(response.statusCode<200||response.statusCode>=300)throw Exception('Download failed ('+response.statusCode.toString()+').');
+     final ext=type=='image'?'png':type=='video'?'mp4':'mp3';
+     final mime=type=='image'?MimeType.png:type=='video'?MimeType.mp4:MimeType.mp3;
+     await FileSaver.instance.saveFile(name:'Devora-AI-'+DateTime.now().millisecondsSinceEpoch.toString(),bytes:response.bodyBytes,ext:ext,mimeType:mime);
+     if(mounted)setState(()=>status='Download saved successfully.');
+   } catch(e) {
+     if(mounted)setState(()=>status='Could not save this file: '+e.toString().replaceFirst('Exception: ',''));
+   } finally {if(mounted)setState(()=>downloading=false);}
+ }
  Future<void> poll(String task)async{for(var i=0;i<120;i++){await Future.delayed(const Duration(seconds:3));if(!mounted)return;try{final d=await Api.call('devora-media',widget.token,{'action':'status','taskId':task});final state=(d['state']??'').toString().toLowerCase();final urls=d['urls'];String u=(d['url']??'').toString();if(u.isEmpty&&urls is List&&urls.isNotEmpty)u=urls.first.toString();if(u.startsWith('http')){setState(()=>{result=u,status='Finished. Open the result link to view or save it.'});return;}if(state.contains('fail')||state.contains('error')){setState(()=>status=(d['failMsg']??'Generation failed').toString());return;}setState(()=>status='Generating… '+((i+1)*3).toString()+' seconds');}catch(_){setState(()=>status='Waiting for provider status…');}}setState(()=>status='Still processing. Task ID: '+task);}
  @override
  Widget build(BuildContext c) {
@@ -178,13 +199,27 @@ class _MediaState extends State<MediaPage>{
        if (status.isNotEmpty)
          Padding(padding: const EdgeInsets.only(top: 14), child: Glass(child: Padding(padding: const EdgeInsets.all(14), child: Text(status)))),
        if (result.isNotEmpty)
-         Padding(padding: const EdgeInsets.only(top: 12), child: Glass(child: Padding(
+         Padding(padding: const EdgeInsets.only(top: 14), child: Glass(child: Padding(
            padding: const EdgeInsets.all(14),
            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-             const Text('RESULT LINK', style: TextStyle(fontWeight: FontWeight.bold)),
-             const SizedBox(height: 8),
-             SelectableText(result, style: const TextStyle(color: Color(0xFF9DC0FF))),
-             const Text('Tap and hold the link to copy it, then open it to save the file.', style: TextStyle(color: Colors.white54, fontSize: 12)),
+             Row(children:[const Icon(Icons.check_circle_rounded,color:Color(0xFF55DCCB),size:20),const SizedBox(width:8),const Expanded(child:Text('Your creation is ready',style:TextStyle(fontWeight:FontWeight.w800,fontSize:17))),IconButton(tooltip:'Open original file',onPressed:openResult,icon:const Icon(Icons.open_in_new_rounded))]),
+             const SizedBox(height:10),
+             if(type=='image')
+               ClipRRect(borderRadius:BorderRadius.circular(16),child:Image.network(result,fit:BoxFit.contain,width:double.infinity,loadingBuilder:(c,w,p)=>p==null?w:Container(height:210,alignment:Alignment.center,child:const CircularProgressIndicator()),errorBuilder:(c,e,st)=>Container(height:160,alignment:Alignment.center,child:const Column(mainAxisSize:MainAxisSize.min,children:[Icon(Icons.broken_image_outlined,size:42),SizedBox(height:8),Text('Preview unavailable. Open the original file.')]))))
+             else
+               Container(width:double.infinity,padding:const EdgeInsets.symmetric(vertical:24,horizontal:14),decoration:BoxDecoration(color:const Color(0xFF092C2D),borderRadius:BorderRadius.circular(16),border:Border.all(color:const Color(0xFF1C7776))),child:Column(children:[
+                 Icon(type=='video'?Icons.movie_creation_rounded:Icons.music_note_rounded,size:48,color:const Color(0xFF55DCCB)),
+                 const SizedBox(height:8),
+                 Text(type=='video'?'AI video generated':'AI music generated',style:const TextStyle(fontWeight:FontWeight.w800,fontSize:16)),
+                 const SizedBox(height:4),
+                 const Text('Tap play to open and play the original media.',style:TextStyle(color:Colors.white60,fontSize:12),textAlign:TextAlign.center),
+                 const SizedBox(height:12),
+                 FilledButton.tonalIcon(onPressed:openResult,icon:const Icon(Icons.play_arrow_rounded),label:const Text('Play media')),
+               ])),
+             const SizedBox(height:12),
+             SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:downloading?null:downloadResult,icon:downloading?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.download_rounded),label:Text(downloading?'Saving to your phone…':'Download original '+type.toUpperCase()))),
+             const SizedBox(height:5),
+             const Text('The generated media is shown here. Download saves the original file to your device.',style:TextStyle(color:Colors.white54,fontSize:11)),
            ]),
          ))),
        const SizedBox(height: 20),
