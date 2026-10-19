@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,9 +13,20 @@ void main()=>runApp(const DevoraApp());
 
 class DevoraApp extends StatefulWidget { const DevoraApp({super.key}); @override State<DevoraApp> createState()=>_AppState(); }
 class _AppState extends State<DevoraApp>{
- String? token,email; bool loading=true;
- @override void initState(){super.initState();restore();}
- Future<void> restore() async { try { final p = await SharedPreferences.getInstance().timeout(const Duration(seconds: 8)); if (!mounted) return; setState(() { token = p.getString('access_token'); email = p.getString('email'); loading = false; }); } catch (_) { if (!mounted) return; setState(() { token = null; email = null; loading = false; }); }}
+ String? token,email; bool loading=false;
+ @override void initState(){super.initState(); restore();}
+ Future<void> restore() async {
+  // Never keep the whole app on a spinner while local storage initializes.
+  Timer(const Duration(seconds: 5), () { if (mounted && loading) setState(() { loading=false; }); });
+  try {
+   final p=await SharedPreferences.getInstance().timeout(const Duration(seconds: 4));
+   if(!mounted)return;
+   setState(() { token=p.getString('access_token'); email=p.getString('email'); loading=false; });
+  } catch (_) {
+   if(!mounted)return;
+   setState(() { token=null; email=null; loading=false; });
+  }
+ }
  Future<void> login(String t,String e)async{final p=await SharedPreferences.getInstance();await p.setString('access_token',t);await p.setString('email',e);setState((){token=t;email=e;});}
  Future<void> logout()async{final p=await SharedPreferences.getInstance();await p.remove('access_token');await p.remove('email');setState(()=>token=null);}
  @override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Devora AI',theme:ThemeData(useMaterial3:true,brightness:Brightness.dark,scaffoldBackgroundColor:const Color(0xFF060A14),colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFF558AFF),brightness:Brightness.dark)),home:loading?const Scaffold(body:Center(child:CircularProgressIndicator())):token==null?AuthPage(onLogin:login):MainPage(token:token!,email:email??'',onLogout:logout));
