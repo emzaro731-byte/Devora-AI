@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 const _supabaseUrl = 'https://vihbsfrwnslnmheowkhy.supabase.co';
 const _supabasePublishableKey = 'sb_publishable_HIMGxb-O6fj9O7OzT4ukuQ_jm5W8mWz';
@@ -62,7 +63,7 @@ class _LongVideoPageState extends State<LongVideoPage> {
     catch (_) { setState(() => message = 'Could not open the video link.'); }
   }
   @override Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Long video studio'), subtitle: null),
+    appBar: AppBar(title: const Text('Long video studio')),
     body: ListView(padding: const EdgeInsets.all(16), children: [
       Container(padding: const EdgeInsets.all(18), decoration: BoxDecoration(borderRadius: BorderRadius.circular(22), color: const Color(0xFF09282B), border: Border.all(color: const Color(0xFF1B6B69))),
         child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
