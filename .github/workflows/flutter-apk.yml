@@ -1,4 +1,4 @@
-name: Build Devora AI APK
+name: Build Devora AI - Single APK
 on:
   workflow_dispatch:
   push:
@@ -7,6 +7,7 @@ on:
       - 'lib/**'
       - 'pubspec.yaml'
       - '.github/workflows/flutter-apk.yml'
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,13 +25,18 @@ jobs:
         run: flutter create --platforms=android --project-name devora_ai --org com.devora.ai .
       - name: Install packages
         run: flutter pub get
-      - name: Build optimized arm64 release APK
-        run: flutter build apk --release --target-platform android-arm64 --tree-shake-icons --obfuscate --split-debug-info=build/symbols
-      - name: Report APK size
-        run: du -h build/app/outputs/flutter-apk/app-release.apk
-      - name: Upload optimized APK
+      - name: Build ONE universal APK
+        run: |
+          flutter build apk --release --tree-shake-icons --obfuscate --split-debug-info=build/symbols
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk dist/Devora-AI.apk
+          echo "APK files packaged:"
+          find dist -maxdepth 1 -type f -name '*.apk' -printf '%f (%s bytes)\n'
+          test "$(find dist -maxdepth 1 -type f -name '*.apk' | wc -l)" -eq 1
+      - name: Upload single APK
         uses: actions/upload-artifact@v4
         with:
-          name: devora-ai-optimized-arm64-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: Devora-AI-SINGLE-APK
+          path: dist/Devora-AI.apk
+          if-no-files-found: error
           retention-days: 14
