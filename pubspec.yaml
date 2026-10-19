@@ -13,6 +13,9 @@ dependencies:
   uuid: ^4.5.1
   url_launcher: ^6.3.2
   file_saver: ^0.2.14
+  file_picker: ^10.3.7
+  path_provider: ^2.1.5
+  record: ^6.1.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
