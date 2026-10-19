@@ -221,7 +221,7 @@ class _CreditsPageState extends State<CreditsPage> {
   {'id':'pack_146586','credits':11000,'amount':146586},
   {'id':'pack_159912','credits':12000,'amount':159912},
  ];
- String naira(num n) => '₦${n.toStringAsFixed(0).replaceAllMapped(RegExp(r'\\B(?=(\\d{3})+(?!\\d))'), (m) => ',')}';
+ String naira(num n) => '₦\${n.toStringAsFixed(0).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',')}';
  Future<void> buy(Map<String,dynamic> p) async {
   setState(() { busy=true; message='Creating secure Flutterwave checkout…'; reference=null; });
   try {
