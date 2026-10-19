@@ -218,15 +218,26 @@ class _ChatState extends State<ChatPage>{
  SafeArea(top:false,child:Padding(padding:const EdgeInsets.all(12),child:Glass(child:Row(children:[Expanded(child:TextField(controller:input,minLines:1,maxLines:4,onSubmitted:(_)=>send(),decoration:const InputDecoration(hintText:'Message Devora AI…',border:InputBorder.none,contentPadding:EdgeInsets.all(12)))),IconButton(onPressed:busy?null:send,icon:const Icon(Icons.arrow_upward),style:IconButton.styleFrom(backgroundColor:const Color(0xFF139E9B)))]))))
  ]);}
 class MediaPage extends StatefulWidget{final String token;final Future<void> Function() refresh;const MediaPage({super.key,required this.token,required this.refresh});@override State<MediaPage> createState()=>_MediaState();}
-class _MediaState extends State<MediaPage>{
+class _MediaState extends State<MediaPage> with WidgetsBindingObserver{
+ final Set<String> activePolls=<String>{};
+ bool resumingPending=false;
+ @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);WidgetsBinding.instance.addPostFrameCallback((_)=>resumePendingGenerations());}
+ @override void didChangeAppLifecycleState(AppLifecycleState state){if(state==AppLifecycleState.resumed)resumePendingGenerations();}
+ Future<void> resumePendingGenerations()async{
+  if(resumingPending)return;resumingPending=true;
+  try{final rows=await Api.loadGenerations(widget.token);for(final row in rows){if((row['status']??'').toString().toLowerCase()!='processing')continue;final task=(row['task_id']??'').toString();final id=(row['id']??'').toString();if(task.isEmpty||id.isEmpty||activePolls.contains(task))continue;unawaited(poll(task,historyId:id,resumed:true));}}
+  catch(_){}
+  finally{resumingPending=false;}
+ }
+
  String? currentHistoryId; final prompt=TextEditingController(),musicStyle=TextEditingController(text:'Afrobeats, melodic, polished studio production');String type='image',model='gpt-image-2-text-to-image',resolution='720p',ratio='auto',status='',result='',voiceMode='AI voice',voiceFileName='',voiceMime='audio/mp4',visualStyle='Photorealistic';Uint8List? voiceBytes;final AudioRecorder recorder=AudioRecorder();int duration=10;String voiceGender='m';bool busy=false,downloading=false,recording=false; VideoPlayerController? videoController; final AudioPlayer audioPlayer=AudioPlayer(); bool mediaPlaying=false,previewLoading=false;
  final models={'image':['gpt-image-2-text-to-image','nano-banana-2-1','nano-banana-2','nano-banana-pro','grok-imagine-image-2-0/text-to-image','bytedance/seedream-v4-text-to-image','flux-2/pro-text-to-image','flux-2/flex-text-to-image','qwen2-1/text-to-image'],'video':['bytedance/seedance-2-5','veo-3-1','kling-3.0/video','grok-imagine-video-1-5-preview'],'music':['V6','V6_MINI','V6_WILD']};
  final visualStyles=['Photorealistic','Cinematic','Anime','3D render','Cartoon','Cyberpunk','Fantasy','Watercolor','Oil painting','Digital art','Comic book','Pixel art','Vintage film','Minimalist','Luxury editorial','Surreal','Ghibli-inspired','Claymation','Fashion editorial','Product photography','Architecture','Documentary','Neon noir','Dreamlike','Low-poly','Isometric','Pencil sketch','Charcoal drawing','Pop art','Retro futurism'];
  final musicStyles=['Afrobeats','Afro-fusion','Afropop','Amapiano','Hip-hop','Trap','R&B','Soul','Gospel','Pop','Dancehall','Reggae','House','EDM','Drill','Jazz','Blues','Rock','Acoustic','Orchestral','Cinematic soundtrack','Lo-fi','Highlife','Fuji','Amapiano-Afrobeats fusion','Synthwave','Funk','Country','Indie pop','Ambient'];
  final aspectRatios=['auto','1:1','16:9','9:16','4:3','3:4','3:2','2:3','21:9'];
  int get cost=>type=='image'?({'gpt-image-2-text-to-image':6,'nano-banana-2-1':12,'nano-banana-2':8,'nano-banana-pro':24,'grok-imagine-image-2-0/text-to-image':10,'bytedance/seedream-v4-text-to-image':8,'flux-2/pro-text-to-image':10,'qwen2-1/text-to-image':6}[model]??8):type=='video'?({'bytedance/seedance-2-5':170,'veo-3-1':255,'kling-3.0/video':70,'grok-imagine-video-1-5-preview':20}[model]??70):(model=='V6_MINI'?10:12);
- Future<void> generate()async{currentHistoryId=null;if(prompt.text.trim().isEmpty){setState(()=>status='Enter a song idea or lyrics first.');return;}if(type=='music'&&voiceMode!='AI voice'&&voiceBytes==null){setState(()=>status='Record or upload an audio sample first.');return;}setState(()=>{busy=true,status='Starting generation…',result=''});try{String? audioUrl;if(type=='music'&&voiceMode!='AI voice'){status='Uploading your voice reference securely…';audioUrl=await Api.uploadVoiceReference(widget.token,voiceBytes!,voiceFileName.isEmpty?'voice.m4a':voiceFileName,voiceMime);}final generationPrompt=type=='music'?prompt.text.trim():'${prompt.text.trim()}, style: $visualStyle';final body=<String,dynamic>{'type':type,'model':model,'prompt':generationPrompt,'requestId':uuid.v4(),'resolution':resolution,'aspectRatio':ratio,'duration':duration,'style':type=='music'?musicStyle.text.trim():visualStyle};if(type=='music'){body['voiceMode']=voiceMode;body['vocalGender']=voiceGender;}if(audioUrl!=null)body['audioUrl']=audioUrl;final d=await Api.call('devora-media',widget.token,body);final task=(d['taskId']??'').toString();setState(()=>status='Queued task '+task);if(task.isNotEmpty){try{currentHistoryId=await Api.addGeneration(widget.token,type:type,prompt:generationPrompt,model:model,taskId:task);}catch(_){if(mounted)setState(()=>status='Generation started; history could not be saved. Check Supabase history permissions.');}await poll(task);}}catch(x){if(mounted)setState(()=>status=x.toString().replaceFirst('Exception: ',''));}if(mounted){setState(()=>busy=false);await widget.refresh();}}
- @override void dispose(){videoController?.dispose();audioPlayer.dispose();prompt.dispose();musicStyle.dispose();recorder.dispose();super.dispose();}
+ Future<void> generate()async{currentHistoryId=null;if(prompt.text.trim().isEmpty){setState(()=>status='Enter a song idea or lyrics first.');return;}if(type=='music'&&voiceMode!='AI voice'&&voiceBytes==null){setState(()=>status='Record or upload an audio sample first.');return;}setState(()=>{busy=true,status='Starting generation…',result=''});try{String? audioUrl;if(type=='music'&&voiceMode!='AI voice'){status='Uploading your voice reference securely…';audioUrl=await Api.uploadVoiceReference(widget.token,voiceBytes!,voiceFileName.isEmpty?'voice.m4a':voiceFileName,voiceMime);}final generationPrompt=type=='music'?prompt.text.trim():'${prompt.text.trim()}, style: $visualStyle';final body=<String,dynamic>{'type':type,'model':model,'prompt':generationPrompt,'requestId':uuid.v4(),'resolution':resolution,'aspectRatio':ratio,'duration':duration,'style':type=='music'?musicStyle.text.trim():visualStyle};if(type=='music'){body['voiceMode']=voiceMode;body['vocalGender']=voiceGender;}if(audioUrl!=null)body['audioUrl']=audioUrl;final d=await Api.call('devora-media',widget.token,body);final task=(d['taskId']??'').toString();setState(()=>status='Queued task '+task);if(task.isNotEmpty){try{currentHistoryId=await Api.addGeneration(widget.token,type:type,prompt:generationPrompt,model:model,taskId:task);}catch(_){if(mounted)setState(()=>status='Generation started; history could not be saved. Check Supabase history permissions.');}await poll(task,historyId:currentHistoryId);}}catch(x){if(mounted)setState(()=>status=x.toString().replaceFirst('Exception: ',''));}if(mounted){setState(()=>busy=false);await widget.refresh();}}
+ @override void dispose(){WidgetsBinding.instance.removeObserver(this);videoController?.dispose();audioPlayer.dispose();prompt.dispose();musicStyle.dispose();recorder.dispose();super.dispose();}
  Future<void> chooseVoiceFile() async {
   try {
     final pick = await FilePicker.platform.pickFiles(type: FileType.audio, withData: true);
@@ -353,9 +364,37 @@ class _MediaState extends State<MediaPage>{
      if(mounted)setState(()=>downloading=false);
    }
  }
- Future<void> saveHistoryStatus(String status,{String? url})async{final id=currentHistoryId;if(id==null)return;try{await Api.updateGeneration(widget.token,id,status:status,url:url);}catch(_){} }
- Future<void> poll(String task)async{for(var i=0;i<120;i++){await Future.delayed(const Duration(seconds:3));if(!mounted)return;try{final d=await Api.call('devora-media',widget.token,{'action':'status','taskId':task});final state=(d['state']??'').toString().toLowerCase();final urls=d['urls'];String u=(d['url']??'').toString();if(u.isEmpty&&urls is List&&urls.isNotEmpty)u=urls.first.toString();if(u.startsWith('http')){setState(()=>{result=u,status='Finished. Preview or download your media inside Devora AI.'});await saveHistoryStatus('completed',url:u);await prepareMediaPreview(u);return;}if(state.contains('fail')||state.contains('error')){setState(()=>status=(d['failMsg']??'Generation failed').toString());await saveHistoryStatus('failed');return;}setState(()=>status='Generating… '+((i+1)*3).toString()+' seconds');}catch(_){setState(()=>status='Waiting for provider status…');}}setState(()=>status='Still processing. Task ID: '+task);}
- @override
+ Future<void> saveHistoryStatus(String status,{String? url,String? historyId})async{final id=historyId??currentHistoryId;if(id==null)return;try{await Api.updateGeneration(widget.token,id,status:status,url:url);}catch(_){}}
+  Future<void> poll(String task,{String? historyId,bool resumed=false})async{
+   if(!activePolls.add(task))return;
+   try{
+    // Provider jobs keep running remotely. Persisted task IDs are resumed on launch/app return.
+    for(var i=0;i<2400;i++){
+     await Future.delayed(const Duration(seconds:3));
+     if(!mounted)return;
+     try{
+      final d=await Api.call('devora-media',widget.token,{'action':'status','taskId':task});
+      final state=(d['state']??d['status']??'').toString().toLowerCase();
+      final urls=d['urls'];String u=(d['url']??d['resultUrl']??'').toString();
+      if(u.isEmpty&&urls is List&&urls.isNotEmpty)u=urls.first.toString();
+      if(u.startsWith('http')){
+       await saveHistoryStatus('completed',url:u,historyId:historyId);
+       if(mounted&&(!resumed||currentHistoryId==historyId)){setState(()=>{result=u,status='Generation complete. Your file is ready to preview or download from History.'});currentHistoryId=historyId;await prepareMediaPreview(u);}
+       await widget.refresh();return;
+      }
+      if(state.contains('fail')||state.contains('error')||state=='cancelled'){
+       final message=(d['failMsg']??d['message']??'Generation failed').toString();
+       await saveHistoryStatus('failed',historyId:historyId);
+       if(mounted&&!resumed)setState(()=>status=message);
+       return;
+      }
+      if(mounted&&!resumed)setState(()=>status='Generating… '+((i+1)*3).toString()+' seconds');
+     }catch(_){if(mounted&&!resumed)setState(()=>status='Waiting for provider status…');}
+    }
+    if(mounted&&!resumed)setState(()=>status='Still processing on the provider. Check History again later.');
+   }finally{activePolls.remove(task);}
+  }
+  @override
  Widget build(BuildContext c) {
    return ListView(
      padding: const EdgeInsets.all(16),
