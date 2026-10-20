@@ -7,6 +7,7 @@ on:
       - 'lib/**'
       - 'android/**'
       - 'pubspec.yaml'
+      - 'assets/devora_app_icon.jpg'
       - '.github/workflows/small-apk.yml'
 
 permissions:
@@ -24,6 +25,8 @@ jobs:
       - name: Generate missing Android platform files
         run: flutter create --platforms=android --project-name devora_ai .
       - run: flutter pub get
+      - name: Apply supplied Devora AI launcher icon
+        run: dart run flutter_launcher_icons
       - name: Build optimized ARM64 release APK
         run: flutter build apk --release --target-platform android-arm64 --split-debug-info=build/symbols --obfuscate
       - name: Show APK size
