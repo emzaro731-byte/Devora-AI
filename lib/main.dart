@@ -225,29 +225,34 @@ class _MainState extends State<MainPage>{
    AccountPage(email:widget.email,wallet:wallet,refresh:refresh,logout:widget.onLogout),
    PublicFeedPage(token:widget.token,title:'Community Templates',onUseTemplate:(p,t){setState(()=>{templatePrompt=p;templateType=t;tab=2;});}),
   ]),
-  bottomNavigationBar:Container(color:const Color(0xFF08090B),child:SafeArea(top:false,child:SizedBox(height:70,child:Row(mainAxisAlignment:MainAxisAlignment.spaceAround,children:[
+  bottomNavigationBar:ClipRRect(borderRadius:const BorderRadius.vertical(top:Radius.circular(24)),child:BackdropFilter(filter:ImageFilter.blur(sigmaX:24,sigmaY:24),child:Container(decoration:BoxDecoration(color:const Color(0xFF050B18).withOpacity(.94),border:Border(top:BorderSide(color:const Color(0xFF328DFF).withOpacity(.28)))),child:SafeArea(top:false,child:SizedBox(height:72,child:Row(mainAxisAlignment:MainAxisAlignment.spaceAround,children:[
    _navItem(Icons.home_rounded,'Create',0),
    _navItem(Icons.auto_awesome_mosaic_outlined,'Template',6),
    GestureDetector(onTap:()=>go(2),child:Container(width:58,height:58,decoration:const BoxDecoration(shape:BoxShape.circle,gradient:LinearGradient(colors:[Color(0xFFFF8D5B),Color(0xFFDC45B7),Color(0xFF7446FF)])),child:const Icon(Icons.add_rounded,size:34,color:Colors.white))),
    _navItem(Icons.history_rounded,'History',3),
    _navItem(Icons.person_outline_rounded,'Me',5),
-  ])))),
+  ]))))),
  );
  Widget _navItem(IconData icon,String label,int target)=>InkWell(onTap:()=>go(target),child:SizedBox(width:64,child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(icon,size:25,color:tab==target?Colors.white:const Color(0xFF777985)),const SizedBox(height:4),Text(label,style:TextStyle(fontSize:11,color:tab==target?Colors.white:const Color(0xFFB5B5BE)))])));
 }
 class HomeDashboard extends StatelessWidget{
  final String email; final num? wallet; final VoidCallback onCreate,onChat,onDiscover,onProfile,onCredits;
  const HomeDashboard({super.key,required this.email,required this.wallet,required this.onCreate,required this.onChat,required this.onDiscover,required this.onProfile,required this.onCredits});
- @override Widget build(BuildContext context)=>Container(color:const Color(0xFF08090B),child:SafeArea(top:false,child:ListView(padding:const EdgeInsets.fromLTRB(12,10,12,24),children:[
-  Row(children:[const Spacer(),_pill(Icons.card_giftcard_rounded,'Earn Credits',onCredits),const SizedBox(width:8),_pill(Icons.bolt_rounded,'Subscribe',onCredits)]),
+ @override Widget build(BuildContext context)=>Container(decoration:const BoxDecoration(gradient:RadialGradient(center:Alignment(-.8,-.9),radius:1.35,colors:[Color(0xFF102D58),Color(0xFF050B18),Color(0xFF02050C)])),child:SafeArea(top:false,child:ListView(padding:const EdgeInsets.fromLTRB(16,12,16,28),children:[
+  Row(children:[const Expanded(child:Row(children:[DevoraMark(size:38,compact:true),SizedBox(width:10),Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('DEVORA AI',style:TextStyle(fontSize:13,fontWeight:FontWeight.w900,letterSpacing:2)),Text('CREATIVE STUDIO',style:TextStyle(fontSize:9,color:Color(0xFF7EBAFF),letterSpacing:1.6))])])),_pill(Icons.card_giftcard_rounded,'Credits',onCredits),const SizedBox(width:7),Container(width:42,height:42,decoration:BoxDecoration(shape:BoxShape.circle,color:const Color(0xFF102442).withOpacity(.8),border:Border.all(color:const Color(0xFF48BFFF).withOpacity(.55))),child:IconButton(padding:EdgeInsets.zero,onPressed:onProfile,icon:const Icon(Icons.person_outline_rounded,color:Color(0xFFBCEBFF),size:21)))]),
   const SizedBox(height:24),
-  Row(children:[
-   Expanded(child:Text('Create something\namazing.',style:const TextStyle(fontSize:28,fontWeight:FontWeight.w900,height:1.12,letterSpacing:-.7))),
-   Container(width:54,height:54,decoration:BoxDecoration(shape:BoxShape.circle,color:const Color(0xFF202127),border:Border.all(color:Colors.white12)),child:IconButton(onPressed:onProfile,icon:const Icon(Icons.person_outline_rounded))),
-  ]),
-  const SizedBox(height:7),
+  Glass(child:Padding(padding:const EdgeInsets.all(20),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+   Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:6),decoration:BoxDecoration(color:const Color(0xFF168BFF).withOpacity(.14),borderRadius:BorderRadius.circular(20),border:Border.all(color:const Color(0xFF42CFFF).withOpacity(.35))),child:const Row(mainAxisSize:MainAxisSize.min,children:[Icon(Icons.auto_awesome_rounded,size:13,color:Color(0xFF6DE3FF)),SizedBox(width:6),Text('YOUR AI CREATIVE SPACE',style:TextStyle(fontSize:9,fontWeight:FontWeight.w800,letterSpacing:1.3,color:Color(0xFFB8E8FF)))])),
+   const SizedBox(height:14),
+   const Text('Imagine it.\\nCreate it.',style:TextStyle(fontSize:34,fontWeight:FontWeight.w900,height:1.04,letterSpacing:-1.1)),
+   const SizedBox(height:9),
+   Text('Turn your ideas into stunning images, videos and music with AI.',style:TextStyle(color:Colors.white.withOpacity(.68),fontSize:13,height:1.45)),
+   const SizedBox(height:18),
+   SizedBox(width:double.infinity,child:DecoratedBox(decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFF168BFF),Color(0xFF5865F2),Color(0xFF9B4DFF)]),borderRadius:BorderRadius.circular(16),boxShadow:[BoxShadow(color:const Color(0xFF347BFF).withOpacity(.3),blurRadius:20,offset:const Offset(0,5))]),child:FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:Colors.transparent,shadowColor:Colors.transparent,minimumSize:const Size.fromHeight(52),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),onPressed:onCreate,icon:const Icon(Icons.add_rounded),label:const Text('Start creating',style:TextStyle(fontWeight:FontWeight.w800))))),
+  ]))),
+  const SizedBox(height:20),
   Text('Your ideas, transformed with AI.',style:TextStyle(color:Colors.white.withOpacity(.58),fontSize:14)),
-  const SizedBox(height:22),
+  const SizedBox(height:18),
   Row(children:[
    Expanded(child:_feature('Create\nImage','Generate beautiful images',Icons.image_outlined,[const Color(0xFF26212A),const Color(0xFF18191F)],onCreate)),
    const SizedBox(width:8),
@@ -260,7 +265,7 @@ class HomeDashboard extends StatelessWidget{
    Expanded(child:_feature('VibeMVA','Make AI music',Icons.graphic_eq_rounded,[const Color(0xFF1D292B),const Color(0xFF202027)],onCreate)),
   ]),
   const SizedBox(height:26),
-  Row(children:[const Expanded(child:Text('Made for you',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800))),TextButton(onPressed:onDiscover,child:const Text('Explore'))]),
+  Row(children:[const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Made for you',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900)),SizedBox(height:3),Text('A little inspiration for your next creation',style:TextStyle(fontSize:11,color:Colors.white54))])),TextButton.icon(onPressed:onDiscover,icon:const Icon(Icons.history_rounded,size:16),label:const Text('History'))]),
   const SizedBox(height:10),
   SizedBox(height:176,child:ListView(scrollDirection:Axis.horizontal,children:[
    _suggestion(Icons.auto_awesome,'AI Image Studio','Turn a simple idea into art',onCreate),
@@ -270,8 +275,8 @@ class HomeDashboard extends StatelessWidget{
   const SizedBox(height:16),
   OutlinedButton.icon(onPressed:onChat,icon:const Icon(Icons.chat_bubble_outline_rounded),label:const Text('Chat with Devora AI'),style:OutlinedButton.styleFrom(foregroundColor:Colors.white,side:const BorderSide(color:Colors.white24),minimumSize:const Size.fromHeight(48))),
  ])));
- Widget _pill(IconData icon,String text,VoidCallback onTap)=>InkWell(onTap:onTap,borderRadius:BorderRadius.circular(22),child:Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),decoration:BoxDecoration(color:const Color(0xFF202026),borderRadius:BorderRadius.circular(22)),child:Row(children:[Icon(icon,size:17,color:const Color(0xFFFFB25D)),const SizedBox(width:6),Text(text,style:const TextStyle(fontSize:12,fontWeight:FontWeight.w700))])));
- Widget _feature(String title,String subtitle,IconData icon,List<Color> colors,VoidCallback onTap)=>InkWell(onTap:onTap,borderRadius:BorderRadius.circular(20),child:ClipRRect(borderRadius:BorderRadius.circular(20),child:BackdropFilter(filter:ImageFilter.blur(sigmaX:12,sigmaY:12),child:Container(height:138,padding:const EdgeInsets.all(15),decoration:BoxDecoration(borderRadius:BorderRadius.circular(20),gradient:const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xD80A3470),Color(0xD8041025),Color(0xB8062340)]),border:Border.all(color:const Color(0xFF168BFF).withOpacity(.52)),boxShadow:[BoxShadow(color:const Color(0xFF087BFF).withOpacity(.13),blurRadius:18)]),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Icon(icon,size:25,color:const Color(0xFF43D8FF)),const Spacer(),Text(title,style:const TextStyle(fontSize:19,fontWeight:FontWeight.w800,height:1.05)),const SizedBox(height:4),Text(subtitle,style:TextStyle(fontSize:10,color:Colors.white.withOpacity(.7)),maxLines:1,overflow:TextOverflow.ellipsis)])))));
+ Widget _pill(IconData icon,String text,VoidCallback onTap)=>InkWell(onTap:onTap,borderRadius:BorderRadius.circular(22),child:Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),decoration:BoxDecoration(gradient:LinearGradient(colors:[const Color(0xFF12315A).withOpacity(.85),const Color(0xFF10182B).withOpacity(.9)]),borderRadius:BorderRadius.circular(22),border:Border.all(color:const Color(0xFF389DFF).withOpacity(.35)),boxShadow:[BoxShadow(color:const Color(0xFF167BFF).withOpacity(.10),blurRadius:12)]),child:Row(children:[Icon(icon,size:17,color:const Color(0xFFFFB25D)),const SizedBox(width:6),Text(text,style:const TextStyle(fontSize:12,fontWeight:FontWeight.w700))])));
+ Widget _feature(String title,String subtitle,IconData icon,List<Color> colors,VoidCallback onTap)=>InkWell(onTap:onTap,borderRadius:BorderRadius.circular(20),child:ClipRRect(borderRadius:BorderRadius.circular(20),child:BackdropFilter(filter:ImageFilter.blur(sigmaX:12,sigmaY:12),child:Container(height:138,padding:const EdgeInsets.all(15),decoration:BoxDecoration(borderRadius:BorderRadius.circular(20),gradient:const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xE8124A87),Color(0xD8071830),Color(0xC5062848)]),border:Border.all(color:const Color(0xFF168BFF).withOpacity(.52)),boxShadow:[BoxShadow(color:const Color(0xFF087BFF).withOpacity(.13),blurRadius:18)]),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Icon(icon,size:25,color:const Color(0xFF43D8FF)),const Spacer(),Text(title,style:const TextStyle(fontSize:19,fontWeight:FontWeight.w800,height:1.05)),const SizedBox(height:4),Text(subtitle,style:TextStyle(fontSize:10,color:Colors.white.withOpacity(.7)),maxLines:1,overflow:TextOverflow.ellipsis)])))));
  Widget _suggestion(IconData icon,String title,String sub,VoidCallback onTap)=>Container(width:220,margin:const EdgeInsets.only(right:10),padding:const EdgeInsets.all(16),decoration:BoxDecoration(borderRadius:BorderRadius.circular(20),gradient:const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xD80A2B59),Color(0xE8040C1A),Color(0xD8061B31)]),border:Border.all(color:const Color(0xFF168BFF).withOpacity(.45)),boxShadow:[BoxShadow(color:const Color(0xFF087BFF).withOpacity(.10),blurRadius:18)]),child:InkWell(onTap:onTap,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Icon(icon,size:29,color:const Color(0xFFFF9C70)),const Spacer(),Text(title,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:17)),const SizedBox(height:5),Text(sub,style:const TextStyle(color:Colors.white60,fontSize:12))])));
 }
 class ChatPage extends StatefulWidget{final String token;const ChatPage({super.key,required this.token});@override State<ChatPage> createState()=>_ChatState();}
