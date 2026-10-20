@@ -185,51 +185,100 @@ class DevoraMark extends StatelessWidget {
  );
 }
 
-class AuthPage extends StatefulWidget{final Future<void> Function(String,String) onLogin;const AuthPage({super.key,required this.onLogin});@override State<AuthPage> createState()=>_AuthState();}
-class _AuthState extends State<AuthPage>{
- final e=TextEditingController(),p=TextEditingController();bool signup=false,busy=false,hidePassword=true;String err='';
- Future<void> go()async{if(e.text.trim().isEmpty||p.text.isEmpty){setState(()=>err='Enter your email and password to continue.');return;}setState(()=>{busy=true,err=''});try{final d=await Api.auth(signup?'signup':'signin',e.text.trim(),p.text);await widget.onLogin(d['access_token'],(d['user']?['email']??e.text).toString());}catch(x){if(mounted)setState(()=>err=x.toString().replaceFirst('Exception: ',''));}if(mounted)setState(()=>busy=false);}
+class AuthPage extends StatefulWidget {
+ final Future<void> Function(String,String) onLogin;
+ const AuthPage({super.key,required this.onLogin});
+ @override State<AuthPage> createState()=>_AuthState();
+}
+class _AuthState extends State<AuthPage> {
+ final e=TextEditingController(),p=TextEditingController();
+ bool signup=false,busy=false,hidePassword=true;
+ String err='';
+ Future<void> go() async {
+  if(e.text.trim().isEmpty||p.text.isEmpty){setState(()=>err='Enter your email and password to continue.');return;}
+  setState(()=>{busy=true,err=''});
+  try {
+   final d=await Api.auth(signup?'signup':'signin',e.text.trim(),p.text);
+   await widget.onLogin(d['access_token'],(d['user']?['email']??e.text).toString());
+  } catch(x) {
+   if(mounted)setState(()=>err=x.toString().replaceFirst('Exception: ',''));
+  } finally {if(mounted)setState(()=>busy=false);}
+ }
  @override void dispose(){e.dispose();p.dispose();super.dispose();}
- @override Widget build(BuildContext c)=>Scaffold(
-  backgroundColor:const Color(0xFF030711),
-  body:Container(
-   decoration:const BoxDecoration(gradient:RadialGradient(center:Alignment(-.75,-.85),radius:1.35,colors:[Color(0xFF123E78),Color(0xFF07152C),Color(0xFF02050A)])),
-   child:Stack(children:[
-    Positioned(top:-65,right:-65,child:Container(width:210,height:210,decoration:BoxDecoration(shape:BoxShape.circle,color:const Color(0xFF168BFF).withOpacity(.10),boxShadow:[BoxShadow(color:const Color(0xFF168BFF).withOpacity(.16),blurRadius:90,spreadRadius:28)]))),
-    Positioned(bottom:35,left:-75,child:Container(width:220,height:220,decoration:BoxDecoration(shape:BoxShape.circle,color:const Color(0xFF7C4DFF).withOpacity(.09),boxShadow:[BoxShadow(color:const Color(0xFF168BFF).withOpacity(.12),blurRadius:90,spreadRadius:25)]))),
-    SafeArea(child:Center(child:SingleChildScrollView(padding:const EdgeInsets.fromLTRB(22,28,22,24),child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:430),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-     Center(child:Container(width:86,height:86,padding:const EdgeInsets.all(4),decoration:BoxDecoration(shape:BoxShape.circle,gradient:LinearGradient(colors:[const Color(0xFF26D9FF).withOpacity(.75),const Color(0xFF635BFF).withOpacity(.7),const Color(0xFF168BFF).withOpacity(.4)]),boxShadow:[BoxShadow(color:const Color(0xFF168BFF).withOpacity(.22),blurRadius:28)]),child:Container(decoration:BoxDecoration(shape:BoxShape.circle,color:const Color(0xFF071326),border:Border.all(color:Colors.white.withOpacity(.13))),child:ClipOval(child:Image.asset('assets/devora_app_icon.jpg',width:76,height:76,fit:BoxFit.cover,errorBuilder:(context,error,stack)=>const Center(child:DevoraMark(size:58,compact:true))))))),
-     const SizedBox(height:20),
-     const Text('DEVORA AI',textAlign:TextAlign.center,style:TextStyle(fontSize:29,fontWeight:FontWeight.w900,letterSpacing:3.4)),
-     const SizedBox(height:8),
-     Text(signup?'Create your creative space':'Your imagination, amplified.',textAlign:TextAlign.center,style:const TextStyle(color:Color(0xFFB7CBE5),fontSize:14)),
-     const SizedBox(height:25),
-     Glass(child:Padding(padding:const EdgeInsets.all(20),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-      Text(signup?'Create account':'Welcome back',style:const TextStyle(fontSize:23,fontWeight:FontWeight.w900,letterSpacing:-.5)),
-      const SizedBox(height:5),
-      Text(signup?'Join the AI creator community.':'Sign in to continue creating.',style:const TextStyle(fontSize:12,color:Colors.white60)),
-      const SizedBox(height:22),
-      const Text('EMAIL ADDRESS',style:TextStyle(fontSize:10,fontWeight:FontWeight.w800,letterSpacing:1.3,color:Color(0xFF9ABBE3))),
-      const SizedBox(height:8),
-      TextField(controller:e,keyboardType:TextInputType.emailAddress,autofillHints:const [AutofillHints.username,AutofillHints.email],textInputAction:TextInputAction.next,style:const TextStyle(fontSize:14),decoration:InputDecoration(hintText:'you@example.com',prefixIcon:const Icon(Icons.mail_outline_rounded,color:Color(0xFF70CEFF)),filled:true,fillColor:const Color(0xFF061329).withOpacity(.82),contentPadding:const EdgeInsets.symmetric(horizontal:14,vertical:16),border:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:const Color(0xFF4D9DFF).withOpacity(.28))),enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:const Color(0xFF4D9DFF).withOpacity(.25))),focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:const BorderSide(color:Color(0xFF43CFFF),width:1.4)))),
-      const SizedBox(height:16),
-      const Text('PASSWORD',style:TextStyle(fontSize:10,fontWeight:FontWeight.w800,letterSpacing:1.3,color:Color(0xFF9ABBE3))),
-      const SizedBox(height:8),
-      TextField(controller:p,obscureText:hidePassword,autofillHints:[signup?AutofillHints.newPassword:AutofillHints.password],textInputAction:TextInputAction.done,onSubmitted:(_)=>busy?null:go(),style:const TextStyle(fontSize:14),decoration:InputDecoration(hintText:'Enter your password',prefixIcon:const Icon(Icons.lock_outline_rounded,color:Color(0xFF70CEFF)),suffixIcon:IconButton(tooltip:hidePassword?'Show password':'Hide password',onPressed:()=>setState(()=>hidePassword=!hidePassword),icon:Icon(hidePassword?Icons.visibility_outlined:Icons.visibility_off_outlined,color:Colors.white54)),filled:true,fillColor:const Color(0xFF061329).withOpacity(.82),contentPadding:const EdgeInsets.symmetric(horizontal:14,vertical:16),border:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:const Color(0xFF4D9DFF).withOpacity(.28))),enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:const Color(0xFF4D9DFF).withOpacity(.25))),focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:const BorderSide(color:Color(0xFF43CFFF),width:1.4)))),
-      if(err.isNotEmpty)Padding(padding:const EdgeInsets.only(top:14),child:Container(padding:const EdgeInsets.all(11),decoration:BoxDecoration(color:const Color(0xFFFF536B).withOpacity(.09),borderRadius:BorderRadius.circular(12),border:Border.all(color:const Color(0xFFFF536B).withOpacity(.25))),child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[const Icon(Icons.error_outline_rounded,color:Color(0xFFFF7B8C),size:18),const SizedBox(width:8),Expanded(child:Text(err,style:const TextStyle(color:Color(0xFFFFA2AE),fontSize:12)))]))),
-      const SizedBox(height:20),
-      Container decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFF18A7FF),Color(0xFF4B69F5),Color(0xFF824DFF)]),borderRadius:BorderRadius.circular(15),boxShadow:[BoxShadow(color:const Color(0xFF267DFF).withOpacity(.27),blurRadius:20,offset:const Offset(0,5))]),child:FilledButton(onPressed:busy?null:go,style:FilledButton.styleFrom(backgroundColor:Colors.transparent,disabledBackgroundColor:Colors.transparent,shadowColor:Colors.transparent,minimumSize:const Size.fromHeight(54),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),child:busy?const SizedBox(width:22,height:22,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):Row(mainAxisAlignment:MainAxisAlignment.center,children:[Text(signup?'Create my account':'Sign in securely',style:const TextStyle(fontWeight:FontWeight.w800,fontSize:15)),const SizedBox(width:9),const Icon(Icons.arrow_forward_rounded,size:19)]))),
-      const SizedBox(height:8),
-      Center(child:TextButton(onPressed:busy?null:()=>setState(()=>{signup=!signup,err=''}),child:Text(signup?'Already have an account?  Sign in':'New to Devora AI?  Create account',style:const TextStyle(color:Color(0xFF9EDCFF),fontWeight:FontWeight.w700)))),
-     ]))),
-     const SizedBox(height:18),
-     const Row(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(Icons.verified_user_outlined,size:15,color:Color(0xFF43D8FF)),SizedBox(width:7),Flexible(child:Text('Secure authentication powered by Supabase',textAlign:TextAlign.center,style:TextStyle(color:Colors.white54,fontSize:11)))]),
-     const SizedBox(height:12),
-     const Center(child:Text('CREATE  •  IMAGINE  •  INSPIRE',style:TextStyle(fontSize:9,letterSpacing:2.1,color:Color(0xFF607DA4)))),
-    ]))))
-   ])
-  )
- );
+ InputDecoration fieldDecoration(String hint,IconData icon,{Widget? suffix})=>InputDecoration(
+  hintText:hint,prefixIcon:Icon(icon,color:const Color(0xFF70CEFF)),suffixIcon:suffix,
+  filled:true,fillColor:const Color(0xFF061329),
+  contentPadding:const EdgeInsets.symmetric(horizontal:14,vertical:16),
+  border:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:const BorderSide(color:Color(0xFF244D7A))),
+  enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:const BorderSide(color:Color(0xFF244D7A))),
+  focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:const BorderSide(color:Color(0xFF43CFFF,width:1.4)));
+ @override Widget build(BuildContext context) {
+  return Scaffold(
+   backgroundColor:const Color(0xFF030711),
+   body:Container(
+    decoration:const BoxDecoration(gradient:RadialGradient(center:Alignment(-.75,-.85),radius:1.35,colors:[Color(0xFF123E78),Color(0xFF07152C),Color(0xFF02050A)])),
+    child:SafeArea(
+     child:Center(
+      child:SingleChildScrollView(
+       padding:const EdgeInsets.fromLTRB(22,28,22,24),
+       child:ConstrainedBox(
+        constraints:const BoxConstraints(maxWidth:430),
+        child:Column(
+         crossAxisAlignment:CrossAxisAlignment.stretch,
+         children:[
+          Center(child:Container(
+           width:100,height:100,padding:const EdgeInsets.all(3),
+           decoration:BoxDecoration(shape:BoxShape.circle,gradient:const LinearGradient(colors:[Color(0xFF26D9FF),Color(0xFF635BFF)]),boxShadow:[BoxShadow(color:const Color(0xFF168BFF).withOpacity(.3),blurRadius:28)]),
+           child:ClipOval(child:Image.asset('assets/devora_app_icon.jpg',fit:BoxFit.cover,errorBuilder:(context,error,stack)=>const Center(child:DevoraMark(size:68,compact:true)))),
+          )),
+          const SizedBox(height:18),
+          const Text('DEVORA AI',textAlign:TextAlign.center,style:TextStyle(fontSize:29,fontWeight:FontWeight.w900,letterSpacing:3.4)),
+          const SizedBox(height:8),
+          Text(signup?'Create your creative space':'Your imagination, amplified.',textAlign:TextAlign.center,style:const TextStyle(color:Color(0xFFB7CBE5),fontSize:14)),
+          const SizedBox(height:25),
+          Glass(child:Padding(
+           padding:const EdgeInsets.all(20),
+           child:Column(
+            crossAxisAlignment:CrossAxisAlignment.stretch,
+            children:[
+             Text(signup?'Create account':'Welcome back',style:const TextStyle(fontSize:23,fontWeight:FontWeight.w900)),
+             const SizedBox(height:5),
+             Text(signup?'Join the AI creator community.':'Sign in to continue creating.',style:const TextStyle(fontSize:12,color:Colors.white60)),
+             const SizedBox(height:20),
+             const Text('EMAIL ADDRESS',style:TextStyle(fontSize:10,fontWeight:FontWeight.w800,letterSpacing:1.3,color:Color(0xFF9ABBE3))),
+             const SizedBox(height:8),
+             TextField(controller:e,keyboardType:TextInputType.emailAddress,autofillHints:const [AutofillHints.username,AutofillHints.email],textInputAction:TextInputAction.next,style:const TextStyle(fontSize:14),decoration:fieldDecoration('you@example.com',Icons.mail_outline_rounded)),
+             const SizedBox(height:16),
+             const Text('PASSWORD',style:TextStyle(fontSize:10,fontWeight:FontWeight.w800,letterSpacing:1.3,color:Color(0xFF9ABBE3))),
+             const SizedBox(height:8),
+             TextField(controller:p,obscureText:hidePassword,autofillHints:[signup?AutofillHints.newPassword:AutofillHints.password],textInputAction:TextInputAction.done,onSubmitted:(_){if(!busy)go();},style:const TextStyle(fontSize:14),decoration:fieldDecoration('Enter your password',Icons.lock_outline_rounded,suffix:IconButton(onPressed:()=>setState(()=>hidePassword=!hidePassword),icon:Icon(hidePassword?Icons.visibility_outlined:Icons.visibility_off_outlined,color:Colors.white54)))),
+             if(err.isNotEmpty)Padding(padding:const EdgeInsets.only(top:14),child:Text(err,style:const TextStyle(color:Color(0xFFFFA2AE),fontSize:12))),
+             const SizedBox(height:20),
+             Container(
+              decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFF18A7FF),Color(0xFF4B69F5),Color(0xFF824DFF)]),borderRadius:BorderRadius.circular(15),boxShadow:[BoxShadow(color:const Color(0xFF267DFF).withOpacity(.27),blurRadius:20,offset:const Offset(0,5))]),
+              child:FilledButton(
+               onPressed:busy?null:go,
+               style:FilledButton.styleFrom(backgroundColor:Colors.transparent,disabledBackgroundColor:Colors.transparent,shadowColor:Colors.transparent,minimumSize:const Size.fromHeight(54),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),
+               child:busy?const SizedBox(width:22,height:22,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):Text(signup?'Create my account':'Sign in securely',style:const TextStyle(fontWeight:FontWeight.w800,fontSize:15)),
+              ),
+             ),
+             Center(child:TextButton(onPressed:busy?null:()=>setState(()=>{signup=!signup,err=''}),child:Text(signup?'Already have an account? Sign in':'New to Devora AI? Create account',style:const TextStyle(color:Color(0xFF9EDCFF),fontWeight:FontWeight.w700)))),
+            ],
+           ),
+          )),
+          const SizedBox(height:18),
+          const Row(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(Icons.verified_user_outlined,size:15,color:Color(0xFF43D8FF)),SizedBox(width:7),Flexible(child:Text('Secure authentication powered by Supabase',textAlign:TextAlign.center,style:TextStyle(color:Colors.white54,fontSize:11)))]),
+          const SizedBox(height:12),
+          const Center(child:Text('CREATE • IMAGINE • INSPIRE',style:TextStyle(fontSize:9,letterSpacing:2.1,color:Color(0xFF607DA4)))),
+         ],
+        ),
+       ),
+      ),
+     ),
+    ),
+   ),
+  );
+ }
 }
 class MainPage extends StatefulWidget {
  final String token,email; final Future<void> Function() onLogout;
@@ -734,7 +783,7 @@ class _PublicFeedPageState extends State<PublicFeedPage>{
    const SizedBox(height:5),
    const Text('Public images, videos and music shared by the Devora AI community. Every post can be reused as a template.',style:TextStyle(color:Colors.white60)),
    const SizedBox(height:14),
-   Wrap(spacing:8,children:['all','image','video','music'].map((v)=>ChoiceChip(label:Text(v.toUpperCase()),selected:filter==v,onSelected:(_)=>setState(()=>filter=v)).toList()),
+   Wrap(spacing:8,children:['all','image','video','music'].map((v)=>ChoiceChip(label:Text(v.toUpperCase()),selected:filter==v,onSelected:(_)=>setState(()=>filter=v))).toList()),
    if(loading&&posts.isEmpty)const Padding(padding:EdgeInsets.all(35),child:Center(child:CircularProgressIndicator())),
    if(error.isNotEmpty)Glass(child:Padding(padding:const EdgeInsets.all(14),child:Column(children:[Text(error,style:const TextStyle(color:Colors.redAccent)),const SizedBox(height:8),const Text('Community feed requires the Supabase SQL setup included in the repository.',style:TextStyle(color:Colors.white60)),TextButton(onPressed:load,child:const Text('Try again'))]))),
    if(!loading&&error.isEmpty&&rows.isEmpty)Glass(child:const Padding(padding:EdgeInsets.all(24),child:Column(children:[Icon(Icons.public_rounded,size:40,color:Color(0xFF21D4FF)),SizedBox(height:8),Text('No public posts yet',style:TextStyle(fontSize:17,fontWeight:FontWeight.w800)),SizedBox(height:5),Text('Publish a finished image, video or music track from Generation History to share it here.',textAlign:TextAlign.center,style:TextStyle(color:Colors.white60))]))),
