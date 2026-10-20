@@ -211,7 +211,7 @@ class _AuthState extends State<AuthPage> {
   contentPadding:const EdgeInsets.symmetric(horizontal:14,vertical:16),
   border:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:const BorderSide(color:Color(0xFF244D7A))),
   enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:const BorderSide(color:Color(0xFF244D7A))),
-  focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:const BorderSide(color:Color(0xFF43CFFF,width:1.4)));
+  focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:const BorderSide(color:Color(0xFF43CFFF),width:1.4)));
  @override Widget build(BuildContext context) {
   return Scaffold(
    backgroundColor:const Color(0xFF030711),
