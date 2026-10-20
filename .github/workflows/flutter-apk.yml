@@ -6,6 +6,7 @@ on:
     paths:
       - 'lib/**'
       - 'pubspec.yaml'
+      - 'assets/devora_app_icon.jpg'
       - '.github/workflows/flutter-apk.yml'
 
 jobs:
@@ -25,6 +26,8 @@ jobs:
         run: flutter create --platforms=android --project-name devora_ai --org com.devora.ai .
       - name: Install packages
         run: flutter pub get
+      - name: Apply supplied Devora AI launcher icon
+        run: dart run flutter_launcher_icons
       - name: Build ONE universal APK
         run: |
           flutter build apk --release --tree-shake-icons --obfuscate --split-debug-info=build/symbols
