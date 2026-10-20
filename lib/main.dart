@@ -229,7 +229,7 @@ class _MainState extends State<MainPage>{
    _navItem(Icons.home_rounded,'Create',0),
    _navItem(Icons.auto_awesome_mosaic_outlined,'Template',6),
    GestureDetector(onTap:()=>go(2),child:Container(width:58,height:58,decoration:const BoxDecoration(shape:BoxShape.circle,gradient:LinearGradient(colors:[Color(0xFFFF8D5B),Color(0xFFDC45B7),Color(0xFF7446FF)])),child:const Icon(Icons.add_rounded,size:34,color:Colors.white))),
-   _navItem(Icons.explore_outlined,'Discover',6),
+   _navItem(Icons.history_rounded,'History',3),
    _navItem(Icons.person_outline_rounded,'Me',5),
   ])))),
  );
