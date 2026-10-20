@@ -202,7 +202,7 @@ class _MainState extends State<MainPage>{
  @override void initState(){super.initState();refresh();}
  Future<void> refresh()async{try{final d=await Api.call('devora-media',widget.token,{'action':'wallet'});if(mounted)setState(()=>wallet=d['balance']);}catch(_){}}
  void go(int value)=>setState(()=>tab=value);
- int get navIndex=>tab==0?0:tab==6?1:tab==3?2:tab==5?3:tab==4?4:0;
+ int get navIndex=>tab==0?0:tab==6?1:tab==6?2:tab==5?3:tab==4?4:0;
  @override Widget build(BuildContext c)=>Scaffold(
   backgroundColor:const Color(0xFF030711),
   appBar:AppBar(
@@ -229,7 +229,7 @@ class _MainState extends State<MainPage>{
    _navItem(Icons.home_rounded,'Create',0),
    _navItem(Icons.auto_awesome_mosaic_outlined,'Template',6),
    GestureDetector(onTap:()=>go(2),child:Container(width:58,height:58,decoration:const BoxDecoration(shape:BoxShape.circle,gradient:LinearGradient(colors:[Color(0xFFFF8D5B),Color(0xFFDC45B7),Color(0xFF7446FF)])),child:const Icon(Icons.add_rounded,size:34,color:Colors.white))),
-   _navItem(Icons.explore_outlined,'Discover',3),
+   _navItem(Icons.explore_outlined,'Discover',6),
    _navItem(Icons.person_outline_rounded,'Me',5),
   ])))),
  );
