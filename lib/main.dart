@@ -79,6 +79,17 @@ class Api{
   ).timeout(const Duration(seconds:30));
   if(r.statusCode<200||r.statusCode>=300)throw Exception('Could not update generation history: '+r.body);
  }
+ static Future<List<Map<String,dynamic>>> loadPublicPosts(String t) async {
+  final r=await http.get(Uri.parse(sbUrl+'/rest/v1/devora_public_posts?select=id,user_id,type,prompt,model,media_url,created_at&order=created_at.desc&limit=100'),headers:headers(t)).timeout(const Duration(seconds:30));
+  if(r.statusCode<200||r.statusCode>=300)throw Exception('Could not load community posts: '+r.body);
+  final d=jsonDecode(r.body);if(d is! List)return [];
+  return d.map((e)=>Map<String,dynamic>.from(e as Map)).toList();
+ }
+ static Future<void> publishPublicPost(String t,{required String type,required String prompt,required String model,required String mediaUrl}) async {
+  final userId=await currentUserId(t);
+  final r=await http.post(Uri.parse(sbUrl+'/rest/v1/devora_public_posts'),headers:{...headers(t),'Prefer':'return=minimal'},body:jsonEncode({'user_id':userId,'type':type,'prompt':prompt,'model':model,'media_url':mediaUrl})).timeout(const Duration(seconds:30));
+  if(r.statusCode<200||r.statusCode>=300)throw Exception('Could not publish. Check that the public community SQL has been installed. '+r.body);
+ }
  static Future<List<Map<String,dynamic>>> loadGenerations(String t) async {
   final uri=Uri.parse(sbUrl+'/rest/v1/ai_generations?select=id,type,prompt,model,task_id,status,result_urls,created_at,completed_at&order=created_at.desc&limit=100');
   final r=await http.get(uri,headers:headers(t)).timeout(const Duration(seconds:30));
@@ -191,7 +202,7 @@ class _MainState extends State<MainPage>{
  @override void initState(){super.initState();refresh();}
  Future<void> refresh()async{try{final d=await Api.call('devora-media',widget.token,{'action':'wallet'});if(mounted)setState(()=>wallet=d['balance']);}catch(_){}}
  void go(int value)=>setState(()=>tab=value);
- int get navIndex=>tab==0?0:tab==2?1:tab==3?2:tab==5?3:tab==4?4:0;
+ int get navIndex=>tab==0?0:tab==6?1:tab==3?2:tab==5?3:tab==4?4:0;
  @override Widget build(BuildContext c)=>Scaffold(
   backgroundColor:const Color(0xFF030711),
   appBar:AppBar(
@@ -212,10 +223,11 @@ class _MainState extends State<MainPage>{
    HistoryPage(key:historyKey,token:widget.token),
    CreditsPage(token:widget.token,onPaid:refresh),
    AccountPage(email:widget.email,wallet:wallet,refresh:refresh,logout:widget.onLogout),
+   PublicFeedPage(token:widget.token,title:'Community Templates',onUseTemplate:()=>go(2)),
   ]),
   bottomNavigationBar:Container(color:const Color(0xFF08090B),child:SafeArea(top:false,child:SizedBox(height:70,child:Row(mainAxisAlignment:MainAxisAlignment.spaceAround,children:[
    _navItem(Icons.home_rounded,'Create',0),
-   _navItem(Icons.auto_awesome_mosaic_outlined,'Template',2),
+   _navItem(Icons.auto_awesome_mosaic_outlined,'Template',6),
    GestureDetector(onTap:()=>go(2),child:Container(width:58,height:58,decoration:const BoxDecoration(shape:BoxShape.circle,gradient:LinearGradient(colors:[Color(0xFFFF8D5B),Color(0xFFDC45B7),Color(0xFF7446FF)])),child:const Icon(Icons.add_rounded,size:34,color:Colors.white))),
    _navItem(Icons.explore_outlined,'Discover',3),
    _navItem(Icons.person_outline_rounded,'Me',5),
@@ -658,6 +670,43 @@ class _MediaState extends State<MediaPage> with WidgetsBindingObserver{
  }
 }
 
+
+class PublicFeedPage extends StatefulWidget {
+ final String token,title; final VoidCallback onUseTemplate;
+ const PublicFeedPage({super.key,required this.token,required this.title,required this.onUseTemplate});
+ @override State<PublicFeedPage> createState()=>_PublicFeedPageState();
+}
+class _PublicFeedPageState extends State<PublicFeedPage>{
+ List<Map<String,dynamic>> posts=[]; bool loading=true; String error='',filter='all';
+ @override void initState(){super.initState();load();}
+ Future<void> load()async{setState(()=>loading=true);try{final rows=await Api.loadPublicPosts(widget.token);if(mounted)setState(()=>{posts=rows,error=''});}catch(e){if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));}finally{if(mounted)setState(()=>loading=false);}}
+ @override Widget build(BuildContext context){
+  final rows=posts.where((p)=>filter=='all'||p['type']==filter).toList();
+  return RefreshIndicator(onRefresh:load,child:ListView(padding:const EdgeInsets.all(16),children:[
+   Text(widget.title,style:const TextStyle(fontSize:25,fontWeight:FontWeight.w900)),
+   const SizedBox(height:5),
+   const Text('Public images, videos and music shared by the Devora AI community. Every post can be reused as a template.',style:TextStyle(color:Colors.white60)),
+   const SizedBox(height:14),
+   Wrap(spacing:8,children:['all','image','video','music'].map((v)=>ChoiceChip(label:Text(v.toUpperCase()),selected:filter==v,onSelected:(_)=>setState(()=>filter=v)).toList()),
+   if(loading&&posts.isEmpty)const Padding(padding:EdgeInsets.all(35),child:Center(child:CircularProgressIndicator())),
+   if(error.isNotEmpty)Glass(child:Padding(padding:const EdgeInsets.all(14),child:Column(children:[Text(error,style:const TextStyle(color:Colors.redAccent)),const SizedBox(height:8),const Text('Community feed requires the Supabase SQL setup included in the repository.',style:TextStyle(color:Colors.white60)),TextButton(onPressed:load,child:const Text('Try again'))]))),
+   if(!loading&&error.isEmpty&&rows.isEmpty)Glass(child:const Padding(padding:EdgeInsets.all(24),child:Column(children:[Icon(Icons.public_rounded,size:40,color:Color(0xFF21D4FF)),SizedBox(height:8),Text('No public posts yet',style:TextStyle(fontSize:17,fontWeight:FontWeight.w800)),SizedBox(height:5),Text('Publish a finished image, video or music track from Generation History to share it here.',textAlign:TextAlign.center,style:TextStyle(color:Colors.white60))]))),
+   ...rows.map((p){final type=(p['type']??'image').toString();final url=(p['media_url']??'').toString();final prompt=(p['prompt']??'').toString();final icon=type=='video'?Icons.movie_creation_outlined:type=='music'?Icons.music_note_rounded:Icons.image_outlined;
+    return Padding(padding:const EdgeInsets.only(bottom:12),child:Glass(child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+     Row(children:[Icon(icon,color:const Color(0xFF21D4FF)),const SizedBox(width:8),Expanded(child:Text(type.toUpperCase()+' TEMPLATE',style:const TextStyle(fontWeight:FontWeight.w800))),const Icon(Icons.public,color:Colors.white38,size:17)]),
+     const SizedBox(height:8),
+     if(type=='image'&&url.startsWith('http'))ClipRRect(borderRadius:BorderRadius.circular(12),child:Image.network(url,width:double.infinity,height:200,fit:BoxFit.cover,errorBuilder:(c,e,s)=>const SizedBox(height:70,child:Center(child:Text('Preview unavailable'))))),
+     if(type=='video'&&url.startsWith('http'))Container(width:double.infinity,padding:const EdgeInsets.all(22),decoration:BoxDecoration(color:const Color(0xFF081A30),borderRadius:BorderRadius.circular(12)),child:Column(children:[const Icon(Icons.play_circle_outline_rounded,size:42,color:Color(0xFF21D4FF)),const SizedBox(height:6),Text('Shared video',style:const TextStyle(color:Colors.white70)),TextButton(onPressed:()=>launchUrl(Uri.parse(url),mode:LaunchMode.externalApplication),child:const Text('Open video'))])),
+     if(type=='music'&&url.startsWith('http'))Container(width:double.infinity,padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:const Color(0xFF081A30),borderRadius:BorderRadius.circular(12)),child:Row(children:[const Icon(Icons.music_note_rounded,size:34,color:Color(0xFF21D4FF)),const SizedBox(width:8),const Expanded(child:Text('Community music track')),IconButton(onPressed:()=>launchUrl(Uri.parse(url),mode:LaunchMode.externalApplication),icon:const Icon(Icons.play_arrow_rounded))])),
+     const SizedBox(height:8),Text(prompt,maxLines:4,overflow:TextOverflow.ellipsis,style:const TextStyle(height:1.35)),
+     Text('Model: '+(p['model']??'AI model').toString(),style:const TextStyle(color:Colors.white38,fontSize:11)),
+     const SizedBox(height:8),SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:widget.onUseTemplate,icon:const Icon(Icons.auto_awesome),label:const Text('Use template in Create'))),
+    ]))));
+   }),
+  ]));
+ }
+}
+
 class HistoryPage extends StatefulWidget {
  final String token;
  const HistoryPage({super.key,required this.token});
@@ -722,6 +771,7 @@ class _HistoryPageState extends State<HistoryPage> {
      const SizedBox(height:7),
      Text(dateLabel(item['created_at']),style:const TextStyle(color:Colors.white38,fontSize:11)),
      if(ready)Padding(padding:const EdgeInsets.only(top:8),child:OutlinedButton.icon(onPressed:downloadingId==id?null:()=>download(item),icon:downloadingId==id?const SizedBox(width:16,height:16,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.download_rounded),label:Text(downloadingId==id?'Saving…':'Download to phone'))),
+     if(ready)Padding(padding:const EdgeInsets.only(top:6),child:SizedBox(width:double.infinity,child:OutlinedButton.icon(onPressed:()async{try{await Api.publishPublicPost(widget.token,type:type,prompt:prompt,model:(item['model']??'AI model').toString(),mediaUrl:url);if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Published publicly as a reusable community template.')));}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}},icon:const Icon(Icons.public_rounded),label:const Text('Publish publicly as template')))),
     ]))));
    }),
   ]));
