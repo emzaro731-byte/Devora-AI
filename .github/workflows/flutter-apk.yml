@@ -24,6 +24,22 @@ jobs:
           java-version: '17'
       - name: Generate Android platform
         run: flutter create --platforms=android --project-name devora_ai --org com.devora.ai .
+      - name: Clean corrupt Android SDK downloads
+        shell: bash
+        run: |
+          SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          rm -rf "$SDK_ROOT/.downloadIntermediates"
+          rm -rf "$SDK_ROOT/ndk/28.2.13676358"
+          rm -rf "$SDK_ROOT/ndk/28.2.13676358.tmp"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          if ! "$SDKMANAGER" --install "ndk;28.2.13676358"; then
+            rm -rf "$SDK_ROOT/.downloadIntermediates"
+            rm -rf "$SDK_ROOT/ndk/28.2.13676358"
+            rm -rf "$SDK_ROOT/ndk/28.2.13676358.tmp"
+            "$SDKMANAGER" --install "ndk;28.2.13676358"
+          fi
       - name: Install packages
         run: flutter pub get
       - name: Apply supplied Devora AI launcher icon
