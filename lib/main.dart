@@ -197,7 +197,7 @@ class MainPage extends StatefulWidget {
  @override State<MainPage> createState()=>_MainState();
 }
 class _MainState extends State<MainPage>{
- int tab=0; num? wallet;
+ int tab=0; num? wallet; String? templatePrompt; String templateType='image';
  final historyKey=GlobalKey<_HistoryPageState>();
  @override void initState(){super.initState();refresh();}
  Future<void> refresh()async{try{final d=await Api.call('devora-media',widget.token,{'action':'wallet'});if(mounted)setState(()=>wallet=d['balance']);}catch(_){}}
@@ -219,11 +219,11 @@ class _MainState extends State<MainPage>{
   body:IndexedStack(index:tab,children:[
    HomeDashboard(email:widget.email,wallet:wallet,onCreate:()=>go(2),onChat:()=>go(1),onDiscover:()=>go(3),onProfile:()=>go(5),onCredits:()=>go(4)),
    ChatPage(token:widget.token),
-   MediaPage(token:widget.token,refresh:refresh),
+   MediaPage(key:ValueKey('media-$templateType-${templatePrompt?.hashCode ?? 0}'),token:widget.token,refresh:refresh,initialPrompt:templatePrompt,initialType:templateType),
    HistoryPage(key:historyKey,token:widget.token),
    CreditsPage(token:widget.token,onPaid:refresh),
    AccountPage(email:widget.email,wallet:wallet,refresh:refresh,logout:widget.onLogout),
-   PublicFeedPage(token:widget.token,title:'Community Templates',onUseTemplate:()=>go(2)),
+   PublicFeedPage(token:widget.token,title:'Community Templates',onUseTemplate:(p,t){setState(()=>{templatePrompt=p;templateType=t;tab=2;});}),
   ]),
   bottomNavigationBar:Container(color:const Color(0xFF08090B),child:SafeArea(top:false,child:SizedBox(height:70,child:Row(mainAxisAlignment:MainAxisAlignment.spaceAround,children:[
    _navItem(Icons.home_rounded,'Create',0),
@@ -297,9 +297,11 @@ class _ChatState extends State<ChatPage>{
  Expanded(child:ListView.builder(controller:scroll,padding:const EdgeInsets.all(14),itemCount:msgs.length+(busy?1:0),itemBuilder:(c,i){if(i>=msgs.length)return const Padding(padding:EdgeInsets.all(12),child:Text('Devora is thinking…',style:TextStyle(color:Colors.white54)));final m=msgs[i];final user=m['role']=='user';return Align(alignment:user?Alignment.centerRight:Alignment.centerLeft,child:Container(constraints:const BoxConstraints(maxWidth:340),margin:const EdgeInsets.only(bottom:12),padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:user?const Color(0xFF0A4A4B):const Color(0xFF09191B),borderRadius:BorderRadius.circular(18),border:Border.all(color:Colors.white10)),child:Text(m['content']??'',style:const TextStyle(height:1.45))));})),
  SafeArea(top:false,child:Padding(padding:const EdgeInsets.all(12),child:Glass(child:Row(children:[Expanded(child:TextField(controller:input,minLines:1,maxLines:4,onSubmitted:(_)=>send(),decoration:const InputDecoration(hintText:'Message Devora AI…',border:InputBorder.none,contentPadding:EdgeInsets.all(12)))),IconButton(onPressed:busy?null:send,icon:const Icon(Icons.arrow_upward),style:IconButton.styleFrom(backgroundColor:const Color(0xFF139E9B)))]))))
  ]);}
-class MediaPage extends StatefulWidget{final String token;final Future<void> Function() refresh;const MediaPage({super.key,required this.token,required this.refresh});@override State<MediaPage> createState()=>_MediaState();}
+class MediaPage extends StatefulWidget{final String token;final Future<void> Function() refresh;final String? initialPrompt;final String initialType;const MediaPage({super.key,required this.token,required this.refresh,this.initialPrompt,this.initialType='image'});@override State<MediaPage> createState()=>_MediaState();}
 class _MediaState extends State<MediaPage> with WidgetsBindingObserver{
  final Set<String> activePolls=<String>{};
+ @override void didChangeDependencies(){super.didChangeDependencies();if(widget.initialPrompt!=null&&prompt.text.isEmpty){prompt.text=widget.initialPrompt!;type=['image','video','music'].contains(widget.initialType)?widget.initialType:'image';if(type=='image')model='gpt-image-2-text-to-image';else if(type=='video')model='bytedance/seedance-2-5';else model='V6';}}
+
  bool resumingPending=false;
  @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);WidgetsBinding.instance.addPostFrameCallback((_)=>resumePendingGenerations());}
  @override void didChangeAppLifecycleState(AppLifecycleState state){if(state==AppLifecycleState.resumed)resumePendingGenerations();}
@@ -672,7 +674,7 @@ class _MediaState extends State<MediaPage> with WidgetsBindingObserver{
 
 
 class PublicFeedPage extends StatefulWidget {
- final String token,title; final VoidCallback onUseTemplate;
+ final String token,title; final void Function(String prompt,String type) onUseTemplate;
  const PublicFeedPage({super.key,required this.token,required this.title,required this.onUseTemplate});
  @override State<PublicFeedPage> createState()=>_PublicFeedPageState();
 }
@@ -700,7 +702,7 @@ class _PublicFeedPageState extends State<PublicFeedPage>{
      if(type=='music'&&url.startsWith('http'))Container(width:double.infinity,padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:const Color(0xFF081A30),borderRadius:BorderRadius.circular(12)),child:Row(children:[const Icon(Icons.music_note_rounded,size:34,color:Color(0xFF21D4FF)),const SizedBox(width:8),const Expanded(child:Text('Community music track')),IconButton(onPressed:()=>launchUrl(Uri.parse(url),mode:LaunchMode.externalApplication),icon:const Icon(Icons.play_arrow_rounded))])),
      const SizedBox(height:8),Text(prompt,maxLines:4,overflow:TextOverflow.ellipsis,style:const TextStyle(height:1.35)),
      Text('Model: '+(p['model']??'AI model').toString(),style:const TextStyle(color:Colors.white38,fontSize:11)),
-     const SizedBox(height:8),SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:widget.onUseTemplate,icon:const Icon(Icons.auto_awesome),label:const Text('Use template in Create'))),
+     const SizedBox(height:8),SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:()=>showDialog<void>(context:context,builder:(dialogContext){final editController=TextEditingController(text:prompt);return AlertDialog(title:const Text('Edit template'),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Customize the prompt before creating your own version.'),const SizedBox(height:12),TextField(controller:editController,minLines:4,maxLines:8,decoration:const InputDecoration(labelText:'Edit prompt',border:OutlineInputBorder())),const SizedBox(height:8),Text('Media type: '+type.toUpperCase(),style:const TextStyle(color:Colors.white60))])),actions:[TextButton(onPressed:()=>Navigator.pop(dialogContext),child:const Text('Cancel')),FilledButton.icon(onPressed:(){final edited=editController.text.trim();if(edited.isEmpty)return;Navigator.pop(dialogContext);widget.onUseTemplate(edited,type);},icon:const Icon(Icons.edit_rounded),label:const Text('Use edited template'))]};}),icon:const Icon(Icons.edit_rounded),label:const Text('Edit & use template'))),
     ]))));
    }),
   ]));
