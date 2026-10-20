@@ -202,7 +202,7 @@ class _MainState extends State<MainPage>{
  @override void initState(){super.initState();refresh();}
  Future<void> refresh()async{try{final d=await Api.call('devora-media',widget.token,{'action':'wallet'});if(mounted)setState(()=>wallet=d['balance']);}catch(_){}}
  void go(int value)=>setState(()=>tab=value);
- int get navIndex=>tab==0?0:tab==6?1:tab==6?2:tab==5?3:tab==4?4:0;
+ int get navIndex=>tab==0?0:tab==6?1:tab==3?2:tab==5?3:tab==4?4:0;
  @override Widget build(BuildContext c)=>Scaffold(
   backgroundColor:const Color(0xFF030711),
   appBar:AppBar(
@@ -244,7 +244,7 @@ class HomeDashboard extends StatelessWidget{
   Glass(child:Padding(padding:const EdgeInsets.all(20),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
    Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:6),decoration:BoxDecoration(color:const Color(0xFF168BFF).withOpacity(.14),borderRadius:BorderRadius.circular(20),border:Border.all(color:const Color(0xFF42CFFF).withOpacity(.35))),child:const Row(mainAxisSize:MainAxisSize.min,children:[Icon(Icons.auto_awesome_rounded,size:13,color:Color(0xFF6DE3FF)),SizedBox(width:6),Text('YOUR AI CREATIVE SPACE',style:TextStyle(fontSize:9,fontWeight:FontWeight.w800,letterSpacing:1.3,color:Color(0xFFB8E8FF)))])),
    const SizedBox(height:14),
-   const Text('Imagine it.\\nCreate it.',style:TextStyle(fontSize:34,fontWeight:FontWeight.w900,height:1.04,letterSpacing:-1.1)),
+   const Text('Imagine it.\nCreate it.',style:TextStyle(fontSize:34,fontWeight:FontWeight.w900,height:1.04,letterSpacing:-1.1)),
    const SizedBox(height:9),
    Text('Turn your ideas into stunning images, videos and music with AI.',style:TextStyle(color:Colors.white.withOpacity(.68),fontSize:13,height:1.45)),
    const SizedBox(height:18),
