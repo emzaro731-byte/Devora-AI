@@ -292,36 +292,64 @@ class _MainState extends State<MainPage>{
  Future<void> refresh()async{try{final d=await Api.call('devora-media',widget.token,{'action':'wallet'});if(mounted)setState(()=>wallet=d['balance']);}catch(_){}}
  void go(int value)=>setState(()=>tab=value);
  int get navIndex=>tab==0?0:tab==6?1:tab==3?2:tab==5?3:tab==4?4:0;
- @override Widget build(BuildContext c)=>Scaffold(
-  backgroundColor:const Color(0xFF030711),
-  appBar:AppBar(
-   backgroundColor:const Color(0xFF050B18),surfaceTintColor:Colors.transparent,
-   leading:Padding(padding:const EdgeInsets.all(9),child:const DevoraMark(size:34,compact:true)),
-   title:const SizedBox.shrink(),
-   actions:[
-    IconButton(tooltip:'AI chat',onPressed:()=>go(1),icon:const Icon(Icons.chat_bubble_outline_rounded,color:Colors.white70)),
-    const SizedBox(width:4),
-    Container(margin:const EdgeInsets.symmetric(vertical:9),padding:const EdgeInsets.symmetric(horizontal:12),decoration:BoxDecoration(gradient:LinearGradient(colors:[const Color(0xFF12315A).withOpacity(.9),const Color(0xFF071329)]),border:Border.all(color:const Color(0xFF389DFF).withOpacity(.4)),borderRadius:BorderRadius.circular(24),boxShadow:[BoxShadow(color:const Color(0xFF167BFF).withOpacity(.12),blurRadius:12)]),child:Row(children:[const Icon(Icons.card_giftcard_rounded,color:Color(0xFFFF71B8),size:19),const SizedBox(width:8),Icon(Icons.bolt_rounded,color:Colors.amber.shade400,size:18),const SizedBox(width:3),Text(wallet?.toString()??'30',style:const TextStyle(fontWeight:FontWeight.w800)),const SizedBox(width:8),const Text('Subscribe',style:TextStyle(fontWeight:FontWeight.w700))])),
-    const SizedBox(width:10),
-   ],
-  ),
-  body:IndexedStack(index:tab,children:[
-   HomeDashboard(email:widget.email,wallet:wallet,onCreate:()=>go(2),onChat:()=>go(1),onDiscover:()=>go(3),onProfile:()=>go(5),onCredits:()=>go(4)),
-   ChatPage(token:widget.token),
-   MediaPage(key:ValueKey('media-$templateType-${templatePrompt?.hashCode ?? 0}'),token:widget.token,refresh:refresh,initialPrompt:templatePrompt,initialType:templateType),
-   HistoryPage(key:historyKey,token:widget.token),
-   CreditsPage(token:widget.token,onPaid:refresh),
-   AccountPage(email:widget.email,wallet:wallet,refresh:refresh,logout:widget.onLogout),
-   PublicFeedPage(token:widget.token,title:'Community Templates',onUseTemplate:(p,t){setState(() { templatePrompt=p; templateType=t; tab=2; });}),
-  ]),
-  bottomNavigationBar:ClipRRect(borderRadius:const BorderRadius.vertical(top:Radius.circular(24)),child:BackdropFilter(filter:ImageFilter.blur(sigmaX:24,sigmaY:24),child:Container(decoration:BoxDecoration(color:const Color(0xFF050B18).withOpacity(.94),border:Border(top:BorderSide(color:const Color(0xFF328DFF).withOpacity(.28)))),child:SafeArea(top:false,child:SizedBox(height:72,child:Row(mainAxisAlignment:MainAxisAlignment.spaceAround,children:[
-   _navItem(Icons.home_rounded,'Create',0),
-   _navItem(Icons.auto_awesome_mosaic_outlined,'Template',6),
-   GestureDetector(onTap:()=>go(2),child:Container(width:58,height:58,decoration:BoxDecoration(shape:BoxShape.circle,gradient:const LinearGradient(colors:[Color(0xFF20DFFF),Color(0xFF168BFF),Color(0xFF6557FF)]),border:Border.all(color:Colors.white.withOpacity(.6),width:1.2),boxShadow:[BoxShadow(color:const Color(0xFF168BFF).withOpacity(.4),blurRadius:22,spreadRadius:1)]),child:const Icon(Icons.add_rounded,size:34,color:Colors.white))),
-   _navItem(Icons.history_rounded,'History',3),
-   _navItem(Icons.person_outline_rounded,'Me',5),
-  ]))))),
- );
+ @override Widget build(BuildContext c) {
+  const destinations = <int>[0, 6, 2, 3, 5];
+  final selected = destinations.indexOf(tab);
+  return Scaffold(
+   backgroundColor: const Color(0xFF030711),
+   appBar: AppBar(
+    backgroundColor: const Color(0xFF050B18),
+    surfaceTintColor: Colors.transparent,
+    leading: const Padding(padding: EdgeInsets.all(9), child: DevoraMark(size: 34, compact: true)),
+    title: const Text('DEVORA AI', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+    actions: [
+     IconButton(tooltip: 'AI chat', onPressed: () => go(1), icon: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white70)),
+     Padding(
+      padding: const EdgeInsets.only(right: 12, top: 9, bottom: 9),
+      child: Container(
+       padding: const EdgeInsets.symmetric(horizontal: 12),
+       decoration: BoxDecoration(
+        color: const Color(0xFF071329),
+        border: Border.all(color: const Color(0xFF389DFF).withOpacity(.4)),
+        borderRadius: BorderRadius.circular(24),
+       ),
+       child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.bolt_rounded, color: Colors.amber.shade400, size: 18),
+        const SizedBox(width: 4),
+        Text(wallet?.toString() ?? '30', style: const TextStyle(fontWeight: FontWeight.w800)),
+        const SizedBox(width: 8),
+        const Text('Credits', style: TextStyle(fontWeight: FontWeight.w700)),
+       ]),
+      ),
+     ),
+    ],
+   ),
+   body: IndexedStack(index: tab, children: [
+    HomeDashboard(email: widget.email, wallet: wallet, onCreate: () => go(2), onChat: () => go(1), onDiscover: () => go(3), onProfile: () => go(5), onCredits: () => go(4)),
+    ChatPage(token: widget.token),
+    MediaPage(key: ValueKey('media-$templateType-${templatePrompt?.hashCode ?? 0}'), token: widget.token, refresh: refresh, initialPrompt: templatePrompt, initialType: templateType),
+    HistoryPage(key: historyKey, token: widget.token),
+    CreditsPage(token: widget.token, onPaid: refresh),
+    AccountPage(email: widget.email, wallet: wallet, refresh: refresh, logout: widget.onLogout),
+    PublicFeedPage(token: widget.token, title: 'Community Templates', onUseTemplate: (p, t) {
+     setState(() { templatePrompt = p; templateType = t; tab = 2; });
+    }),
+   ]),
+   bottomNavigationBar: NavigationBar(
+    backgroundColor: const Color(0xFF050B18),
+    indicatorColor: const Color(0xFF123E78),
+    selectedIndex: selected < 0 ? 0 : selected,
+    onDestinationSelected: (index) => go(destinations[index]),
+    destinations: const [
+     NavigationDestination(icon: Icon(Icons.home_rounded), label: 'Create'),
+     NavigationDestination(icon: Icon(Icons.auto_awesome_mosaic_outlined), label: 'Templates'),
+     NavigationDestination(icon: Icon(Icons.add_circle_outline_rounded), label: 'Generate'),
+     NavigationDestination(icon: Icon(Icons.history_rounded), label: 'History'),
+     NavigationDestination(icon: Icon(Icons.person_outline_rounded), label: 'Me'),
+    ],
+   ),
+  );
+ }
  Widget _navItem(IconData icon,String label,int target)=>InkWell(onTap:()=>go(target),child:SizedBox(width:64,child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(icon,size:25,color:tab==target?const Color(0xFF55DFFF):const Color(0xFF777985)),const SizedBox(height:4),Text(label,style:TextStyle(fontSize:11,color:tab==target?const Color(0xFF9ADFFF):const Color(0xFFB5B5BE)))])));
 }
 class HomeDashboard extends StatelessWidget{
