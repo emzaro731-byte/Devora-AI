@@ -22,8 +22,30 @@ jobs:
         with:
           channel: stable
           cache: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
       - name: Generate missing Android platform files
         run: flutter create --platforms=android --project-name devora_ai .
+      - name: Clean corrupt Android SDK downloads
+        shell: bash
+        run: |
+          SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          # Remove partial NDK installs and cached partial downloads before retrying.
+          rm -rf "$SDK_ROOT/.downloadIntermediates"
+          rm -rf "$SDK_ROOT/ndk/28.2.13676358"
+          rm -rf "$SDK_ROOT/ndk/28.2.13676358.tmp"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          # Retry once after clearing the SDK manager cache if Google's archive is interrupted.
+          if ! "$SDKMANAGER" --install "ndk;28.2.13676358"; then
+            rm -rf "$SDK_ROOT/.downloadIntermediates"
+            rm -rf "$SDK_ROOT/ndk/28.2.13676358"
+            rm -rf "$SDK_ROOT/ndk/28.2.13676358.tmp"
+            "$SDKMANAGER" --install "ndk;28.2.13676358"
+          fi
       - run: flutter pub get
       - name: Apply supplied Devora AI launcher icon
         run: dart run flutter_launcher_icons
